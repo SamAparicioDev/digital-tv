@@ -2,33 +2,27 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Rol;
 use Illuminate\Support\Str;
-
-class Rol extends Model
+class Privilegio extends Model
 {
-    use HasFactory;
-
     public $incrementing = false;
-    protected $keyType = 'string';
-    protected $table = 'rol';
+    public $keyType = 'string';
+    protected $table = 'privilegios';
 
     protected $fillable = [
         'nombre',
+        'acceso',
         'descripcion'
     ];
 
-    public function privilegios()
+    public function roles()
     {
-        return $this->belongsToMany(Privilegio::class, 'privilegio_rol', 'rol_id', 'privilegio_id');
+        return $this->belongsToMany(Rol::class);
     }
 
-    public function usuarios(){
-        return $this->belongsToMany(User::class, 'usuario_rol');
-    }
-
-    protected static function boot()
+    public static function boot()
     {
         parent::boot();
 

@@ -45,4 +45,13 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+    public function roles()
+    {
+        return $this->belongsToMany(Rol::class);
+    }
+
+    public function privilegios()
+    {
+        return $this->roles->flatMap->privilegios->pluck('clave')->unique();
+    }
 }
