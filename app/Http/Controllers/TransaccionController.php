@@ -5,11 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Wallet;
 use App\Models\Transaccion;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class TransaccionController extends Controller
 {
-    // Obtener todas las transacciones del usuario autenticado
     public function index(Request $request)
     {
         $user = $request->user();
@@ -25,8 +23,6 @@ class TransaccionController extends Controller
             'transacciones' => $transacciones
         ]);
     }
-
-    // Registrar una transacción: ingreso o gasto
     public function store(Request $request)
     {
         $request->validate([
@@ -36,43 +32,19 @@ class TransaccionController extends Controller
 
         $user = $request->user();
 
-        return DB::transaction(function () use ($request, $user) {
+        $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
-            // Obtener wallet del usuario (con bloqueo para evitar errores)
-            $wallet = Wallet::where('user_id', $user->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        $transaccion = Transaccion::create([
+            'wallet_id' => $wallet->id,
+            'tipo'      => $request->tipo,
+            'valor'     => $request->valor,
+            'estado'    => 'pendiente'
+        ]);
 
-            $valor = $request->valor;
-            $tipo  = $request->tipo;
-
-            // Validación si es gasto y no tiene saldo suficiente
-            if ($tipo === 'gasto') {
-                if ($wallet->saldo < $valor) {
-                    return response()->json([
-                        'error' => 'Saldo insuficiente'
-                    ], 422);
-                }
-
-                $wallet->saldo -= $valor;
-            } else {
-                $wallet->saldo += $valor;
-            }
-
-            $wallet->save();
-
-            // Registrar la transacción
-            $transaccion = Transaccion::create([
-                'wallet_id' => $wallet->id,
-                'tipo'      => $tipo,
-                'valor'     => $valor
-            ]);
-
-            return response()->json([
-                'message'      => 'Transacción registrada correctamente',
-                'wallet'       => $wallet,
-                'transaccion'  => $transaccion
-            ], 201);
-        });
+        return response()->json([
+            'ok' => true,
+            'message' => 'Transacción creada y enviada para aprobación',
+            'transaccion' => $transaccion
+        ], 201);
     }
 }

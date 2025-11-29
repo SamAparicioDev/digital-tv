@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\User;
 
 class Wallet extends Model
 {
@@ -11,34 +10,14 @@ class Wallet extends Model
 
     protected $fillable = [
         'user_id',
-        'saldo' // lo manejaremos virtualmente
+        'saldo'
     ];
-
-    protected $hidden = [
-        'saldo_cents'
-    ];
-
-    // Mutator
-    public function setSaldoAttribute($value)
-    {
-        $this->attributes['saldo_cents'] = (int) round($value * 100);
-    }
-
-    // Accessor
-    public function getSaldoAttribute()
-    {
-        return $this->attributes['saldo_cents'] / 100;
-    }
-
     public function user()
     {
         return $this->belongsTo(User::class);
     }
-
     public function transacciones()
-{
-    return $this->hasMany(Transaccion::class, 'wallet_id');
+    {
+        return $this->hasMany(Transaccion::class, 'wallet_id');
+    }
 }
-
-}
-

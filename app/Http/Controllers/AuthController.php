@@ -2,49 +2,66 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-use Laravel\Sanctum\HasApiTokens;
-
+use App\Models\User;
+use App\Models\Wallet;
 
 class AuthController extends Controller
 {
     public function registrar(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:25',
+            'name'     => 'required|string|max:25',
             'password' => 'required|confirmed|string|max:30|min:8',
-            'email' => 'required|email|unique:users,email'
+            'email'    => 'required|email|unique:users,email'
         ]);
 
-        $usuario = User::create(['name' => $request->name, 'password' => $request->password, 'email' => $request->email]);
+        return DB::transaction(function () use ($request) {
 
-        return response()->json($usuario, 201);
+            $usuario = User::create([
+                'name'     => $request->name,
+                'email'    => $request->email,
+                'password' => $request->password
+            ]);
+
+            Wallet::create([
+                'user_id' => $usuario->id,
+                'saldo'   => 0
+            ]);
+
+            return response()->json([
+                'ok'     => true,
+                'user'   => $usuario,
+                'wallet' => $usuario->wallet
+            ], 201);
+        });
     }
 
     public function ingresar(Request $request)
     {
-
         $request->validate([
             'email'    => 'required|email|exists:users,email',
-            'password' => 'required|string|max:30|min:8'
+            'password' => 'required|string|min:8|max:30'
         ]);
 
-        // Try to authenticate the user
         if (!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json(['error' => 'Invalid credentials'], 401);
+            return response()->json([
+                'ok'    => false,
+                'error' => 'Invalid credentials'
+            ], 401);
         }
 
-        // Auth::attempt found the user and validated the password
         $user = Auth::user();
-            $token = $user->createToken('auth_token')->plainTextToken;
 
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Login successful',
-            'user'    => $user,
-            'token'  => $token
+            'ok'     => true,
+            'message'=> 'Login successful',
+            'user'   => $user,
+            'token'  => $token,
         ]);
     }
 }
