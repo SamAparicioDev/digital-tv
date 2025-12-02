@@ -44,13 +44,11 @@ class CompraController extends Controller
 
         $user = Auth::user();
 
-        // 🛡️ SOLUCIÓN DEL ERROR: Validar que el usuario exista antes de intentar leer su wallet
         if (!$user) {
             return response()->json(['message' => 'Usuario no autenticado. Por favor, inicia sesión y envía tu token.'], 401);
         }
 
         // 1. Verificar si el usuario tiene Wallet
-        // Ahora es seguro usar $user->wallet porque ya sabemos que $user no es null
         if (!$user->wallet) {
             return response()->json(['message' => 'El usuario no tiene una billetera activa. Contacta soporte.'], 400);
         }
@@ -72,7 +70,7 @@ class CompraController extends Controller
                     'message' => 'Saldo insuficiente para realizar esta compra.',
                     'saldo_actual' => $user->wallet->saldo,
                     'precio_oferta' => $oferta->precio
-                ], 402); // 402 Payment Required
+                ], 402);
             }
 
             // Calculamos los saldos para el registro histórico
@@ -82,12 +80,10 @@ class CompraController extends Controller
             // 5. Crear la Transacción (Pendiente)
             $transaccion = Transaccion::create([
                 'wallet_id' => $user->wallet->id,
-                // Si tu base de datos usa 'egreso', asegúrate de que coincida aquí.
-                // En el error mostraste que se enviaba 'egreso', así que lo ajusto a 'egreso' para evitar el error de truncado.
                 'tipo' => 'egreso',
                 'monto' => $oferta->precio,
                 'saldo_anterior' => $saldoAnterior,
-                'saldo_nuevo' => $saldoNuevo, // 👈 SOLUCIÓN: Agregamos el saldo nuevo calculado
+                'saldo_nuevo' => $saldoNuevo, // Esto es informativo
                 'estado' => 'pendiente',
                 'descripcion' => "Compra de oferta #{$oferta->id} - Pendiente de aprobación",
                 'referencia' => 'COMPRA-' . time() . '-' . $user->id
@@ -106,10 +102,14 @@ class CompraController extends Controller
             // 7. Descontar Stock (Reserva)
             $oferta->decrement('stock');
 
+            // 🚨 8. DESCUENTO REAL DE DINERO (Congelamiento de fondos)
+            // Esta línea faltaba y es vital para que coincida con la lógica del Admin
+            $user->wallet->decrement('saldo', $oferta->precio);
+
             DB::commit();
 
             return response()->json([
-                'message' => 'Compra solicitada con éxito. Esperando aprobación del administrador.',
+                'message' => 'Compra solicitada con éxito. Fondos descontados y esperando aprobación.',
                 'compra' => $compra->load('oferta')
             ], 201);
 
@@ -133,7 +133,6 @@ class CompraController extends Controller
             return response()->json(['message' => 'No autorizado'], 401);
         }
 
-        // Verificar autorización (solo el dueño o un admin podría verla)
         if ($compra->user_id !== $user->id) {
             return response()->json(['message' => 'No autorizado para ver esta compra'], 403);
         }

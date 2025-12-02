@@ -6,6 +6,7 @@ use App\Models\Oferta;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; // ✅ Agregado para logs
 
 class OfertaController extends Controller
 {
@@ -14,6 +15,7 @@ class OfertaController extends Controller
      */
     public function index()
     {
+        // Cargamos la relación 'servicios' para que el usuario vea qué incluye el paquete
         $ofertas = Oferta::with('servicios')->get();
         return response()->json($ofertas, 200);
     }
@@ -27,12 +29,11 @@ class OfertaController extends Controller
             // Datos globales
             'garantia_dias' => 'required|integer|min:0',
             'precio' => 'required|numeric|min:0.01',
-            'stock' => 'required|integer|min:0', // ✅ Nuevo campo validado
+            'stock' => 'required|integer|min:0',
             'cuenta_completa' => 'present|boolean',
             'is_active' => 'present|boolean',
 
             // Datos de la relación (Pivote)
-            // Si quieres que sea opcional crear la oferta sin servicios, cambia 'required' por 'nullable'
             'servicios_incluidos' => 'required|array|min:1',
             'servicios_incluidos.*.streaming_service_id' => ['required', 'integer', Rule::exists('streaming_services', 'id')],
             'servicios_incluidos.*.numero_perfiles' => 'required|integer|min:1',
@@ -45,7 +46,7 @@ class OfertaController extends Controller
             // 1. Crear la Oferta
             $oferta = Oferta::create($request->except('servicios_incluidos'));
 
-            // 2. Asociar Servicios (si se enviaron)
+            // 2. Asociar Servicios
             if ($request->has('servicios_incluidos')) {
                 $serviciosData = collect($request->servicios_incluidos)->mapWithKeys(function ($item) {
                     return [
@@ -66,6 +67,9 @@ class OfertaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            // ✅ Guardamos el error en el log del sistema
+            Log::error("Error creando oferta: " . $e->getMessage());
+
             return response()->json([
                 'message' => 'Error al crear la oferta.',
                 'error' => $e->getMessage()
@@ -89,7 +93,7 @@ class OfertaController extends Controller
         $request->validate([
             'garantia_dias' => 'nullable|integer|min:0',
             'precio' => 'nullable|numeric|min:0.01',
-            'stock' => 'nullable|integer|min:0', // ✅ Validación en update
+            'stock' => 'nullable|integer|min:0',
             'cuenta_completa' => 'nullable|boolean',
             'is_active' => 'nullable|boolean',
 
@@ -105,7 +109,7 @@ class OfertaController extends Controller
             // 1. Actualizar datos base
             $oferta->update($request->except('servicios_incluidos'));
 
-            // 2. Sincronizar servicios (si se envían, reemplaza los anteriores)
+            // 2. Sincronizar servicios (Solo si se envía el array)
             if ($request->has('servicios_incluidos')) {
                 $serviciosData = collect($request->servicios_incluidos)->mapWithKeys(function ($item) {
                     return [
@@ -126,6 +130,8 @@ class OfertaController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error("Error actualizando oferta: " . $e->getMessage());
+
             return response()->json([
                 'message' => 'Error al actualizar la oferta.',
                 'error' => $e->getMessage()
@@ -138,7 +144,12 @@ class OfertaController extends Controller
      */
     public function destroy(Oferta $oferta)
     {
-        $oferta->delete();
-        return response()->json(['message' => 'Oferta eliminada exitosamente'], 204);
+        try {
+            $oferta->delete();
+            // ✅ Cambiado a 200 para que el frontend pueda leer el mensaje JSON
+            return response()->json(['message' => 'Oferta eliminada exitosamente'], 200);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'No se pudo eliminar la oferta.'], 500);
+        }
     }
 }
