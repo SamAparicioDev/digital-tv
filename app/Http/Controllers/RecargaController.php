@@ -9,9 +9,6 @@ use Illuminate\Support\Str;
 
 class RecargaController extends Controller
 {
-    /**
-     * Muestra el historial de transacciones de la billetera del usuario.
-     */
     public function index(Request $request)
     {
         $user = $request->user();
@@ -40,7 +37,6 @@ class RecargaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            // Ya no pedimos 'tipo' porque sabemos que es una recarga
             'monto' => 'required|numeric|min:0.01',
             'referencia_pago' => 'nullable|string|max:255'
         ]);
@@ -48,19 +44,17 @@ class RecargaController extends Controller
         $user = $request->user();
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
 
-        // Proyección de saldos (Informativo)
         $saldoAnterior = $wallet->saldo;
-        // Como es recarga, sumamos
         $saldoNuevo = $saldoAnterior + $request->monto;
 
         $transaccion = Transaccion::create([
             'wallet_id' => $wallet->id,
-            'tipo'      => 'ingreso', // ⚠️ Forzamos 'ingreso' automáticamente
+            'tipo'      => 'ingreso',
             'monto'     => $request->monto,
             'saldo_anterior' => $saldoAnterior,
             'saldo_nuevo'    => $saldoNuevo,
             'estado'    => 'pendiente',
-            'referencia' => $request->referencia_pago ?? 'REC-' . strtoupper(Str::random(8)),
+            'referencia_pago' => $request->referencia_pago ?? 'REC-' . strtoupper(Str::random(8)),
             'descripcion' => 'Solicitud de recarga de saldo'
         ]);
 
