@@ -17,6 +17,7 @@ return new class extends Migration
         $table->decimal('saldo_anterior', 10, 3);
         $table->decimal('saldo_nuevo', 10, 3);
         $table->string('descripcion')->nullable();
+        $table->enum('estado', ['PENDIENTE', 'APROBADO', 'RECHAZADO'])->default('PENDIENTE');
         $table->timestamps();
     });
 }
