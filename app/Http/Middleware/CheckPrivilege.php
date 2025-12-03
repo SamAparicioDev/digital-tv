@@ -17,14 +17,11 @@ class CheckPrivilege
 
         $user = Auth::user();
 
-        // 1. Super Admin siempre pasa (Backdoor de seguridad opcional pero recomendado)
-        // Asumiendo que existe un rol maestro que puede hacer todo
+
         if ($user->hasRole('Super Admin')) {
             return $next($request);
         }
 
-        // 2. Verificamos el privilegio específico usando el método que creamos en el User Model
-        // Puedes permitir múltiples separados por pipe si lo deseas: 'ver_oferta|editar_oferta'
         $privilegios = explode('|', $privilegioRequerido);
 
         $tienePermiso = false;

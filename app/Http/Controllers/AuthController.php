@@ -8,13 +8,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Wallet;
-use App\Models\Rol; // ✅ Necesario para asignar rol por defecto
+use App\Models\Rol; 
 
 class AuthController extends Controller
 {
-    /**
-     * Registro de nuevo usuario (Cliente).
-     */
+
     public function registrar(Request $request)
     {
         $request->validate([
@@ -24,41 +22,35 @@ class AuthController extends Controller
         ]);
 
         return DB::transaction(function () use ($request) {
-            // 1. Crear Usuario
+
             $usuario = User::create([
                 'name'     => $request->name,
                 'email'    => $request->email,
-                'password' => $request->password, // El modelo se encarga del Hashing en 'casts'
+                'password' => $request->password,
             ]);
 
-            // 2. Crear Wallet Inicial
             Wallet::create([
                 'user_id' => $usuario->id,
                 'saldo'   => 0
             ]);
 
-            // 3. ✅ Asignar Rol por defecto ("Cliente")
-            // Asegúrate de crear este rol en tu base de datos primero
+
             $rolCliente = Rol::where('nombre', 'Cliente')->first();
             if ($rolCliente) {
                 $usuario->roles()->attach($rolCliente->id);
             }
 
-            // 4. ✅ Generar Token inmediatamente (Auto-login)
             $token = $usuario->createToken('auth_token')->plainTextToken;
 
             return response()->json([
                 'ok'      => true,
                 'message' => 'Usuario registrado exitosamente',
-                'user'    => $usuario->load('roles', 'wallet'), // Devolvemos info completa
+                'user'    => $usuario->load('roles', 'wallet'),
                 'token'   => $token
             ], 201);
         });
     }
 
-    /**
-     * Inicio de sesión.
-     */
     public function ingresar(Request $request)
     {
         $request->validate([
@@ -75,8 +67,6 @@ class AuthController extends Controller
 
         $usuario = Auth::user();
 
-        // Eliminar tokens anteriores si quieres sesión única (Opcional)
-        // $usuario->tokens()->delete();
 
         $token = $usuario->createToken('auth_token')->plainTextToken;
 
@@ -88,12 +78,8 @@ class AuthController extends Controller
         ]);
     }
 
-    /**
-     * Cierre de sesión (Revocar token).
-     */
     public function logout(Request $request)
     {
-        // Elimina el token que se usó para esta petición
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([

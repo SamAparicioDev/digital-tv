@@ -12,10 +12,8 @@ return new class extends Migration
             $table->uuid('privilegio_id');
             $table->uuid('rol_id');
 
-            // Primary key compuesta
             $table->primary(['privilegio_id', 'rol_id']);
 
-            // Foreign keys
             $table->foreign('privilegio_id')
                 ->references('id')->on('privilegios')
                 ->onDelete('cascade');

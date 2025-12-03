@@ -17,7 +17,7 @@ class StreamingService extends Model
         'slug',
         'logo_url',
         'primary_color',
-        'cantidad_cuentas', // 👈 Nuevo campo agregado
+        'cantidad_cuentas',
         'is_active'
     ];
 
@@ -26,16 +26,13 @@ class StreamingService extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Relación Muchos a Muchos: Un servicio puede estar presente en muchas ofertas.
-     */
     public function ofertas(): BelongsToMany
     {
         return $this->belongsToMany(
             Oferta::class,
-            'oferta_servicio',       // Tabla pivote
-            'streaming_service_id',  // Clave foránea local (en el pivote)
-            'oferta_id'              // Clave foránea remota (en el pivote)
+            'oferta_servicio',
+            'streaming_service_id',
+            'oferta_id'
         )->withPivot([
             'numero_perfiles',
             'duracion_dias',

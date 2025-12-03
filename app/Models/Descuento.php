@@ -29,18 +29,13 @@ class Descuento extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Define la relación muchos a muchos con los roles.
-     */
     public function roles(): BelongsToMany
     {
-        // El tercer argumento es el nombre de la tabla pivote, y el cuarto y quinto son
-        // los nombres de las claves foráneas en esa tabla.
         return $this->belongsToMany(
             Rol::class,
-            'descuento_rol', // Nombre de la tabla pivote
-            'descuento_id',  // Clave foránea local en la tabla pivote
-            'role_id'        // Clave foránea remota en la tabla pivote
+            'descuento_rol', 
+            'descuento_id',
+            'role_id'
         )->withPivot([
             'valor_descuento',
             'tipo_descuento',

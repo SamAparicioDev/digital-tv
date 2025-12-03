@@ -32,14 +32,8 @@ class User extends Authenticatable
         ];
     }
 
-    // --- RELACIONES ---
-
     public function roles(): BelongsToMany
     {
-        // 🚨 CORRECCIÓN IMPORTANTE:
-        // 1. Tabla pivote: 'usuario_rol'
-        // 2. Clave foránea de ESTE modelo (User) en la pivote: 'usuario_id'
-        // 3. Clave foránea del OTRO modelo (Rol) en la pivote: 'rol_id'
         return $this->belongsToMany(Rol::class, 'usuario_rol', 'usuario_id', 'rol_id');
     }
 

@@ -25,29 +25,16 @@ class Compra extends Model
     protected $casts = [
         'precio_compra' => 'float',
     ];
-
-    /**
-     * El usuario que realizó la compra.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
-
-    /**
-     * La oferta que se compró.
-     */
     public function oferta(): BelongsTo
     {
         return $this->belongsTo(Oferta::class);
     }
-
-    /**
-     * La transacción financiera asociada a esta compra.
-     */
     public function transaccion(): BelongsTo
     {
-        // Asumiendo que tienes un modelo Transaccion
         return $this->belongsTo(Transaccion::class);
     }
 }

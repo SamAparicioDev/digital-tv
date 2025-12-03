@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Privilegio extends Model
 {
-    // Configuración para UUID
     public $incrementing = false;
     public $keyType = 'string';
     protected $table = 'privilegios';
@@ -19,10 +18,6 @@ class Privilegio extends Model
         'descripcion'
     ];
 
-    /**
-     * Define la relación muchos a muchos con los roles.
-     * La tabla pivote es 'privilegio_rol'.
-     */
     public function roles(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -30,10 +25,9 @@ class Privilegio extends Model
             'privilegio_rol',
             'privilegio_id',
             'rol_id'
-        )->withTimestamps(); // 🚨 CLAVE: Añadir esto aquí
+        )->withTimestamps();
     }
 
-    // Booting para asignación automática de UUID
     public static function boot()
     {
         parent::boot();

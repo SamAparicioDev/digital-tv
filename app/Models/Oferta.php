@@ -17,7 +17,7 @@ class Oferta extends Model
         'precio',
         'cuenta_completa',
         'is_active',
-        'stock' // ✅ Correcto
+        'stock' 
     ];
 
     protected $casts = [
@@ -25,12 +25,9 @@ class Oferta extends Model
         'precio' => 'float',
         'cuenta_completa' => 'boolean',
         'is_active' => 'boolean',
-        'stock' => 'integer' // ✅ Agregado para asegurar el tipo de dato
+        'stock' => 'integer'
     ];
 
-    /**
-     * Relación Muchos a Muchos: Una oferta incluye varios Servicios de Streaming.
-     */
     public function servicios(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -42,6 +39,6 @@ class Oferta extends Model
             'numero_perfiles',
             'duracion_dias',
             'is_active'
-        ])->withTimestamps(); // ✅ Correcto
+        ])->withTimestamps();
     }
 }

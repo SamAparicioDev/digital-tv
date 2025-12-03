@@ -6,25 +6,15 @@ use App\Models\StreamingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Storage; // ✅ Importante para borrar imágenes
+use Illuminate\Support\Facades\Storage; 
 
 class StreamingServiceController extends Controller
 {
-    /**
-     * Listar servicios.
-     */
     public function index()
     {
-        // Si quieres que los usuarios vean los servicios activos primero, puedes filtrar:
-        // $services = StreamingService::where('is_active', true)->get();
-        // Pero para el admin, mejor ver todos:
         $services = StreamingService::all();
         return response()->json($services, 200);
     }
-
-    /**
-     * Crear servicio.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -48,17 +38,11 @@ class StreamingServiceController extends Controller
         return response()->json($streamingService, 201);
     }
 
-    /**
-     * Mostrar un servicio.
-     */
+
     public function show(StreamingService $streamingService)
     {
         return response()->json($streamingService, 200);
     }
-
-    /**
-     * Actualizar servicio.
-     */
     public function update(Request $request, StreamingService $streamingService)
     {
         $request->validate([
@@ -76,7 +60,6 @@ class StreamingServiceController extends Controller
         }
 
         if ($request->hasFile('logo_url')) {
-            // 🗑️ LÓGICA NUEVA: Borrar imagen anterior si existe
             if ($streamingService->logo_url && Storage::disk('public')->exists($streamingService->logo_url)) {
                 Storage::disk('public')->delete($streamingService->logo_url);
             }
@@ -90,12 +73,8 @@ class StreamingServiceController extends Controller
         return response()->json($streamingService, 200);
     }
 
-    /**
-     * Eliminar servicio.
-     */
     public function destroy(StreamingService $streamingService)
     {
-        // 🗑️ LÓGICA NUEVA: Borrar imagen asociada antes de eliminar el registro
         if ($streamingService->logo_url && Storage::disk('public')->exists($streamingService->logo_url)) {
             Storage::disk('public')->delete($streamingService->logo_url);
         }

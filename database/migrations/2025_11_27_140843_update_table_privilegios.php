@@ -8,8 +8,6 @@ return new class extends Migration
 {
     public function up(): void
     {
-
-
         Schema::table('privilegios', function (Blueprint $table) {
             $table->uuid('id')->primary();
         });
@@ -18,7 +16,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('privilegios', function (Blueprint $table) {
-            // Nada, depende de tu rollback
         });
     }
 };
