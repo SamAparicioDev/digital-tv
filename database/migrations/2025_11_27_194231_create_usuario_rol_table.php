@@ -9,20 +9,16 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('usuario_rol', function (Blueprint $table) {
-            $table->id('usuario_id');
-            $table->uuid('rol_id');
+            // ❌ NO USAR: $table->id('usuario_id'); (Esto crea un ID autoincremental que choca)
 
-            // No se necesita id propio en pivot
+            // ✅ CORRECTO: Definir las columnas de las llaves foráneas
+            $table->foreignId('usuario_id')->constrained('users')->onDelete('cascade');
+            $table->foreignUuid('rol_id')->constrained('rol')->onDelete('cascade');
+
+            // Clave primaria compuesta (La combinación de ambos es única)
             $table->primary(['usuario_id', 'rol_id']);
 
-            // FKs
-            $table->foreign('usuario_id')
-                ->references('id')->on('users')
-                ->onDelete('cascade');
-
-            $table->foreign('rol_id')
-                ->references('id')->on('rol')
-                ->onDelete('cascade');
+            $table->timestamps();
         });
     }
 

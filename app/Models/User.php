@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany; // 1. Importación necesaria
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -36,8 +36,11 @@ class User extends Authenticatable
 
     public function roles(): BelongsToMany
     {
-        // 2. Especificamos la tabla pivote 'usuario_rol' para evitar errores
-        return $this->belongsToMany(Rol::class, 'usuario_rol');
+        // 🚨 CORRECCIÓN IMPORTANTE:
+        // 1. Tabla pivote: 'usuario_rol'
+        // 2. Clave foránea de ESTE modelo (User) en la pivote: 'usuario_id'
+        // 3. Clave foránea del OTRO modelo (Rol) en la pivote: 'rol_id'
+        return $this->belongsToMany(Rol::class, 'usuario_rol', 'usuario_id', 'rol_id');
     }
 
     public function wallet()
@@ -50,38 +53,24 @@ class User extends Authenticatable
         return $this->hasMany(Compra::class);
     }
 
-    // --- LÓGICA DE AUTORIZACIÓN (NUEVA) ---
+    // --- LÓGICA DE AUTORIZACIÓN ---
 
-    /**
-     * Obtiene una lista plana de todos los nombres de privilegios del usuario.
-     */
     public function obtenerPrivilegios()
     {
-        // Si los roles no están cargados, devolvemos colección vacía para evitar errores
         if ($this->roles->isEmpty()) {
             return collect();
         }
 
-        // Recorremos los roles y extraemos los nombres de los privilegios
         return $this->roles->flatMap(function ($rol) {
             return $rol->privilegios->pluck('nombre');
         })->unique();
     }
 
-    /**
-     * Verifica si el usuario tiene un rol específico (por nombre).
-     * Uso: $user->hasRole('admin')
-     */
     public function hasRole($nombreRol)
     {
-        // contains busca si existe algún rol con ese nombre en la colección
         return $this->roles->contains('nombre', $nombreRol);
     }
 
-    /**
-     * Verifica si el usuario tiene un privilegio específico.
-     * Uso: $user->hasPrivilege('ver_dashboard')
-     */
     public function hasPrivilege($nombrePrivilegio)
     {
         return $this->obtenerPrivilegios()->contains($nombrePrivilegio);
