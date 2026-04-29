@@ -9,8 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE privilegios ADD PRIMARY KEY (`id`)');
-    }
+DB::statement('ALTER TABLE privilegios ADD PRIMARY KEY (id)');    }
 
     public function down(): void
     {
