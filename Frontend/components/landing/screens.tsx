@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FadeIn, StaggerContainer } from "@/components/animations/motion"
 import { Monitor, Users, Check, Wifi, Shield, Tv } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { api } from "@/lib/api"
 
 const screens = [
   {
@@ -78,10 +79,46 @@ interface ScreensProps {
 
 export function Screens({ onBuyClick }: ScreensProps) {
   const [filter, setFilter] = useState<string>("all")
+  const [remoteScreens, setRemoteScreens] = useState<any[] | null>(null)
+  const [loadingRemote, setLoadingRemote] = useState(false)
 
-  const filteredScreens = filter === "all" 
-    ? screens 
-    : screens.filter((s) => s.platform.toLowerCase() === filter)
+  // Si backend está disponible, intentar obtener pantallas desde backend
+  useEffect(() => {
+    let mounted = true
+    const load = async () => {
+      try {
+        setLoadingRemote(true)
+        const data = await api.getMyScreens?.() // getMyScreens puede existir; fallback si no
+        if (Array.isArray(data) && mounted) {
+          // Mapear a la estructura esperada por el UI actual
+          const mapped = data.map((s: any) => ({
+            id: s.id ?? Math.floor(Math.random() * 1000000),
+            platform: s.platform ?? s.name ?? "Pantalla",
+            type: s.type ?? s.category ?? "Pantalla",
+            price: typeof s.price === 'number' ? s.price : 0,
+            features: Array.isArray(s.features) ? s.features : [],
+            available: typeof s.available === 'number' ? s.available : 0,
+            popular: !!s.popular,
+            icon: s.icon ?? Tv,
+            color: s.color ?? "bg-gray-500",
+          }))
+          setRemoteScreens(mapped)
+        }
+      } catch {
+        // Si falla, dejamos el fallback con datos locales
+        setRemoteScreens(null)
+      } finally {
+        if (mounted) setLoadingRemote(false)
+      }
+    }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const screensToShow = (remoteScreens?.length ?? 0) > 0 ? remoteScreens! : screens
+  const filteredScreens = filter === "all" ? screensToShow : screensToShow.filter((s) => (s.platform || "").toLowerCase() === filter)
 
   return (
     <section id="pantallas" className="py-20">

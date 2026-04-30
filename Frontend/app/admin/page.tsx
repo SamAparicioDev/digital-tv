@@ -92,6 +92,14 @@ const recentActivity = [
 ]
 
 export default function AdminDashboardPage() {
+  const enabled = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_ENABLE_ADMIN === 'true' : false
+  if (!enabled) {
+    return (
+      <div className="p-6 text-center text-muted-foreground">
+        La sección de administración está desactivada en este entorno.
+      </div>
+    )
+  }
   return (
     <div className="space-y-6">
       {/* Header */}

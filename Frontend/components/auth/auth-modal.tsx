@@ -70,7 +70,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       if (mode === "login") {
         await login(formData.email, formData.password)
       } else {
-        await register(formData.name, formData.email, formData.password)
+        await register(formData.name, formData.email, formData.password, formData.confirmPassword)
       }
       
       onClose()

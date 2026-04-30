@@ -8,7 +8,7 @@ interface AuthContextType {
   isLoading: boolean
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
-  register: (name: string, email: string, password: string) => Promise<void>
+  register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<void>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
   updateBalance: (newBalance: number) => void
@@ -44,8 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData)
   }
 
-  const register = async (name: string, email: string, password: string) => {
-    const { user: userData } = await api.register(name, email, password)
+  const register = async (name: string, email: string, password: string, passwordConfirmation: string) => {
+    const { user: userData } = await api.register(name, email, password, passwordConfirmation)
     setUser(userData)
   }
 

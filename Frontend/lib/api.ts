@@ -1,14 +1,22 @@
 // API Service - Preparado para conectar con Laravel
 // Cambia USE_MOCK a false y configura LARAVEL_API_URL para conectar con tu backend
 
-const USE_MOCK = true // Cambiar a false cuando conectes con Laravel
+const USE_MOCK = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_USE_MOCK === 'true') // Cambiar a false cuando conectes con Laravel
 
-// Solo se usa cuando USE_MOCK es false
+// Base URL del backend Laravel
+// Si se provee NEXT_PUBLIC_API_BASE_URL, lo usamos como base y añadimos /api si no está presente
 const getLaravelApiUrl = () => {
+  const envBase = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_BASE_URL : undefined
+  if (typeof envBase === 'string' && envBase.trim() !== '') {
+    const trimmed = envBase.replace(/\/$/, '')
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+  }
+  // Sin base en env, mantener comportamiento por defecto
   if (typeof window !== "undefined" && !USE_MOCK) {
-    return window.location.origin.includes("localhost") 
-      ? "http://localhost:8000/api" 
-      : "/api" // Ajustar a tu URL de producción
+    const origin = window.location.origin
+    return origin.includes("localhost")
+      ? "http://localhost:8000/api"
+      : origin + "/api"
   }
   return "http://localhost:8000/api"
 }
@@ -139,7 +147,7 @@ export const api = {
       return { user: mockUser, token }
     }
     
-    const res = await fetch(`${LARAVEL_API_URL}/auth/login`, {
+    const res = await fetch(`${LARAVEL_API_URL}/ingresar`, {
       method: "POST",
       headers: getHeaders(false),
       body: JSON.stringify({ email, password }),
@@ -151,12 +159,16 @@ export const api = {
     }
     
     const data = await res.json()
+    // Map wallet balance to top-level balance if backend returns wallet.saldo
+    if (data?.user && data.user.wallet && typeof data.user.wallet.saldo !== 'undefined') {
+      data.user.balance = Number(data.user.wallet.saldo)
+    }
     setToken(data.token)
     localStorage.setItem("user", JSON.stringify(data.user))
     return data
   },
   
-  async register(name: string, email: string, password: string): Promise<AuthResponse> {
+  async register(name: string, email: string, password: string, passwordConfirmation: string): Promise<AuthResponse> {
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 1000))
       const newUser = { ...mockUser, name, email, id: Date.now() }
@@ -166,10 +178,10 @@ export const api = {
       return { user: newUser, token }
     }
     
-    const res = await fetch(`${LARAVEL_API_URL}/auth/register`, {
+    const res = await fetch(`${LARAVEL_API_URL}/registrar`, {
       method: "POST",
       headers: getHeaders(false),
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
     })
     
     if (!res.ok) {
@@ -178,6 +190,10 @@ export const api = {
     }
     
     const data = await res.json()
+    // Map wallet balance to top-level balance if backend returns wallet.saldo
+    if (data?.user && data.user.wallet && typeof data.user.wallet.saldo !== 'undefined') {
+      data.user.balance = Number(data.user.wallet.saldo)
+    }
     setToken(data.token)
     localStorage.setItem("user", JSON.stringify(data.user))
     return data
@@ -186,7 +202,7 @@ export const api = {
   async logout(): Promise<void> {
     if (!USE_MOCK) {
       try {
-        await fetch(`${LARAVEL_API_URL}/auth/logout`, {
+        await fetch(`${LARAVEL_API_URL}/logout`, {
           method: "POST",
           headers: getHeaders(),
         })
@@ -215,8 +231,12 @@ export const api = {
         removeToken()
         return null
       }
-      
-      return res.json()
+      const userData = await res.json()
+      // Map wallet balance to top-level balance if backend returns wallet.saldo
+      if (userData?.wallet && userData.wallet.saldo !== undefined) {
+        userData.balance = Number(userData.wallet.saldo)
+      }
+      return userData
     } catch {
       return null
     }
