@@ -1,25 +1,28 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
+import { useState, useEffect, type ReactNode } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { 
-  Play, 
-  LayoutDashboard, 
-  Users, 
-  Wallet, 
+import { useAuth } from "@/contexts/auth-context"
+import {
+  Play,
+  LayoutDashboard,
+  Users,
+  Wallet,
   Percent,
   Film,
-  ShoppingCart,
-  UserCheck,
-  Menu, 
+  BarChart2,
+  Menu,
   X,
   Bell,
   Settings,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LogOut,
+  User,
+  Loader2,
 } from "lucide-react"
 
 const navItems = [
@@ -28,18 +31,45 @@ const navItems = [
   { label: "Saldo", href: "/admin/saldo", icon: Wallet },
   { label: "Promociones", href: "/admin/promociones", icon: Percent },
   { label: "Estrenos", href: "/admin/estrenos", icon: Film },
-  { label: "Ventas", href: "/admin/ventas", icon: ShoppingCart },
-  { label: "Clientes", href: "/admin/clientes", icon: UserCheck },
+  { label: "Reportes", href: "/admin/reportes", icon: BarChart2 },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, isLoading, isRoleResolved, isAdmin, activeRole, logout } = useAuth()
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 
+  // Guard: solo roles admin/ventas pueden acceder
+  // Espera a que se resuelva el rol desde localStorage antes de redirigir
+  useEffect(() => {
+    if (!isLoading && isRoleResolved) {
+      if (!user) {
+        router.replace('/')
+      } else if (!isAdmin) {
+        router.replace('/dashboard')
+      }
+    }
+  }, [isLoading, isRoleResolved, user, isAdmin, router])
+
+  const handleLogout = async () => {
+    await logout()
+    router.push('/')
+  }
+
+  if (isLoading || !isRoleResolved || !user || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
@@ -66,19 +96,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </span>
             )}
           </Link>
-          
-          {/* Collapse Button - Desktop */}
           <Button
             variant="ghost"
             size="icon"
             className="hidden lg:flex"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           >
-            {isSidebarCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
+            {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
           </Button>
         </div>
 
@@ -101,16 +125,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 title={isSidebarCollapsed ? item.label : undefined}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!isSidebarCollapsed && (
-                  <span className="font-medium text-sm">{item.label}</span>
-                )}
+                {!isSidebarCollapsed && <span className="font-medium text-sm">{item.label}</span>}
               </Link>
             )
           })}
         </nav>
 
-        {/* Settings Link */}
-        <div className="p-3 border-t border-sidebar-border">
+        {/* User + Settings */}
+        <div className="p-3 border-t border-sidebar-border space-y-1">
           <Link
             href="/admin/configuracion"
             className={cn(
@@ -121,6 +143,30 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <Settings className="w-5 h-5" />
             {!isSidebarCollapsed && <span className="font-medium text-sm">Configuración</span>}
           </Link>
+
+          {!isSidebarCollapsed && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sidebar-accent/40 mt-2">
+              <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                <User className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-sidebar-foreground truncate">{user.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">{activeRole?.nombre}</p>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors duration-200",
+              isSidebarCollapsed && "justify-center px-2"
+            )}
+            title={isSidebarCollapsed ? "Cerrar sesión" : undefined}
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {!isSidebarCollapsed && <span className="font-medium text-sm">Cerrar sesión</span>}
+          </button>
         </div>
       </aside>
 
@@ -138,9 +184,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </Button>
 
           <div className="flex-1">
-            <h2 className="text-lg font-semibold text-foreground">
-              Panel de Administración
-            </h2>
+            <h2 className="text-lg font-semibold text-foreground">Panel de Administración</h2>
           </div>
 
           <div className="flex items-center gap-2">
@@ -149,18 +193,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
             </Button>
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <span className="text-sm font-semibold text-primary-foreground">A</span>
+              <span className="text-sm font-semibold text-primary-foreground">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6">
-          {children}
-        </main>
+        <main className="flex-1 p-4 lg:p-6">{children}</main>
       </div>
 
-      {/* Mobile Menu Close Button */}
       {isSidebarOpen && (
         <Button
           variant="ghost"

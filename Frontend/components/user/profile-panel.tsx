@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { api, type Transaction, type Screen } from "@/lib/api"
+import { api, type Transaccion, type Compra } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,7 +24,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  X,
   User,
   History,
   CreditCard,
@@ -33,14 +32,12 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownLeft,
-  Eye,
-  EyeOff,
-  Copy,
   Check,
   Loader2,
   TrendingUp,
   Calendar,
   LogOut,
+  PackageCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FadeIn, AnimatedCounter } from "@/components/animations/motion"
@@ -51,30 +48,28 @@ interface ProfilePanelProps {
 }
 
 export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
-  const { user, logout, updateBalance } = useAuth()
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [screens, setScreens] = useState<Screen[]>([])
+  const { user, logout, refreshUser } = useAuth()
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([])
+  const [compras, setCompras] = useState<Compra[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRechargeOpen, setIsRechargeOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("resumen")
 
   useEffect(() => {
-    if (isOpen && user) {
-      loadData()
-    }
+    if (isOpen && user) loadData()
   }, [isOpen, user])
 
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [transData, screenData] = await Promise.all([
-        api.getTransactions(),
-        api.getMyScreens(),
+      const [recargasData, comprasData] = await Promise.all([
+        api.getRecargas().then((d) => d.transacciones).catch(() => [] as Transaccion[]),
+        api.getCompras().catch(() => [] as Compra[]),
       ])
-      setTransactions(transData)
-      setScreens(screenData)
+      setTransacciones(recargasData)
+      setCompras(comprasData)
     } catch (error) {
-      console.error("Error loading data:", error)
+      console.error("Error loading profile data:", error)
     } finally {
       setIsLoading(false)
     }
@@ -86,6 +81,13 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
   }
 
   if (!user) return null
+
+  const comprasAprobadas = compras.filter((c) => c.estado === 'aprobada')
+  const comprasMes = compras.filter((c) => {
+    const d = new Date(c.created_at)
+    const now = new Date()
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).length
 
   return (
     <>
@@ -111,7 +113,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Saldo disponible</p>
                     <div className="text-3xl font-bold text-foreground">
-                      $<AnimatedCounter value={user.balance} duration={1000} decimals={2} />
+                      $<AnimatedCounter value={user.balance} duration={1000} decimals={0} />
                     </div>
                   </div>
                   <Button
@@ -137,9 +139,9 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                 <History className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">Historial</span>
               </TabsTrigger>
-              <TabsTrigger value="pantallas" className="text-xs">
+              <TabsTrigger value="compras" className="text-xs">
                 <Tv className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Pantallas</span>
+                <span className="hidden sm:inline">Compras</span>
               </TabsTrigger>
               <TabsTrigger value="config" className="text-xs">
                 <Settings className="w-4 h-4 sm:mr-1" />
@@ -153,17 +155,14 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                 <LoadingSkeleton />
               ) : (
                 <>
-                  {/* Quick Stats */}
                   <div className="grid grid-cols-2 gap-3">
                     <Card className="bg-card border-border">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <Tv className="w-4 h-4" />
-                          <span className="text-xs">Pantallas Activas</span>
+                          <span className="text-xs">Compras Aprobadas</span>
                         </div>
-                        <p className="text-2xl font-bold text-foreground">
-                          {screens.filter(s => s.status === "activo").length}
-                        </p>
+                        <p className="text-2xl font-bold text-foreground">{comprasAprobadas.length}</p>
                       </CardContent>
                     </Card>
                     <Card className="bg-card border-border">
@@ -172,23 +171,20 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                           <TrendingUp className="w-4 h-4" />
                           <span className="text-xs">Compras del Mes</span>
                         </div>
-                        <p className="text-2xl font-bold text-foreground">
-                          {transactions.filter(t => t.type === "compra").length}
-                        </p>
+                        <p className="text-2xl font-bold text-foreground">{comprasMes}</p>
                       </CardContent>
                     </Card>
                   </div>
 
-                  {/* Recent Activity */}
                   <Card className="bg-card border-border">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-medium">Actividad Reciente</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      {transactions.slice(0, 3).map((tx) => (
-                        <TransactionItem key={tx.id} transaction={tx} />
+                      {transacciones.slice(0, 3).map((tx) => (
+                        <TransactionItem key={tx.id} transaccion={tx} />
                       ))}
-                      {transactions.length === 0 && (
+                      {transacciones.length === 0 && (
                         <p className="text-sm text-muted-foreground text-center py-4">
                           No hay actividad reciente
                         </p>
@@ -204,14 +200,14 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
               <Card className="bg-card border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">Historial de Transacciones</CardTitle>
-                  <CardDescription>Todas tus compras y recargas</CardDescription>
+                  <CardDescription>Todas tus recargas y compras</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 max-h-[400px] overflow-y-auto">
                   {isLoading ? (
                     <LoadingSkeleton />
-                  ) : transactions.length > 0 ? (
-                    transactions.map((tx) => (
-                      <TransactionItem key={tx.id} transaction={tx} showDate />
+                  ) : transacciones.length > 0 ? (
+                    transacciones.map((tx) => (
+                      <TransactionItem key={tx.id} transaccion={tx} showDate />
                     ))
                   ) : (
                     <p className="text-sm text-muted-foreground text-center py-8">
@@ -222,23 +218,18 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
               </Card>
             </TabsContent>
 
-            {/* Pantallas Tab */}
-            <TabsContent value="pantallas" className="mt-4">
+            {/* Compras Tab */}
+            <TabsContent value="compras" className="mt-4">
               <div className="space-y-3 max-h-[400px] overflow-y-auto">
                 {isLoading ? (
                   <LoadingSkeleton />
-                ) : screens.length > 0 ? (
-                  screens.map((screen) => (
-                    <ScreenCard key={screen.id} screen={screen} />
-                  ))
+                ) : compras.length > 0 ? (
+                  compras.map((c) => <CompraCard key={c.id} compra={c} />)
                 ) : (
                   <Card className="bg-card border-border">
                     <CardContent className="py-8 text-center">
                       <Tv className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">No tienes pantallas activas</p>
-                      <Button className="mt-4 bg-primary text-primary-foreground">
-                        Comprar Pantalla
-                      </Button>
+                      <p className="text-muted-foreground">No tienes compras registradas</p>
                     </CardContent>
                   </Card>
                 )}
@@ -271,14 +262,22 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                       })}
                     </p>
                   </div>
+                  {user.roles && user.roles.length > 0 && (
+                    <div>
+                      <Label className="text-muted-foreground">Roles</Label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {user.roles.map((r) => (
+                          <Badge key={r.id} variant="outline" className="text-primary border-primary/30">
+                            {r.nombre}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={handleLogout}
-              >
+              <Button variant="destructive" className="w-full" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Cerrar Sesión
               </Button>
@@ -292,160 +291,101 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
         isOpen={isRechargeOpen}
         onClose={() => setIsRechargeOpen(false)}
         currentBalance={user.balance}
-        onSuccess={(newBalance) => {
-          updateBalance(newBalance)
+        onSuccess={async () => {
           setIsRechargeOpen(false)
+          await refreshUser()
+          await loadData()
         }}
       />
     </>
   )
 }
 
-// Transaction Item Component
-function TransactionItem({ transaction, showDate = false }: { transaction: Transaction; showDate?: boolean }) {
-  const isPositive = transaction.amount > 0
+// ─── TransactionItem ──────────────────────────────────────────────────────────
 
+function TransactionItem({ transaccion: tx, showDate = false }: { transaccion: Transaccion; showDate?: boolean }) {
+  const isIngreso = tx.tipo === 'deposit'
   return (
     <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
       <div className="flex items-center gap-3">
         <div className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center",
-          isPositive ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
+          isIngreso ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
         )}>
-          {isPositive ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+          {isIngreso ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
         </div>
         <div>
-          <p className="text-sm font-medium text-foreground">{transaction.description}</p>
+          <p className="text-sm font-medium text-foreground line-clamp-1">{tx.descripcion}</p>
           {showDate && (
             <p className="text-xs text-muted-foreground">
-              {new Date(transaction.date).toLocaleDateString("es-ES")}
+              {new Date(tx.created_at).toLocaleDateString("es-ES")}
             </p>
           )}
         </div>
       </div>
       <div className="text-right">
-        <p className={cn("font-semibold", isPositive ? "text-green-500" : "text-red-500")}>
-          {isPositive ? "+" : ""}${Math.abs(transaction.amount).toFixed(2)}
+        <p className={cn("font-semibold", isIngreso ? "text-green-500" : "text-red-500")}>
+          {isIngreso ? '+' : '-'}${tx.monto.toLocaleString('es-CO')}
         </p>
-        <Badge variant={transaction.status === "completado" ? "default" : "secondary"} className="text-xs">
-          {transaction.status}
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-xs",
+            tx.estado === 'APROBADO' ? "text-green-500 border-green-500/30" :
+            tx.estado === 'RECHAZADO' ? "text-red-500 border-red-500/30" :
+            "text-yellow-500 border-yellow-500/30"
+          )}
+        >
+          {tx.estado}
         </Badge>
       </div>
     </div>
   )
 }
 
-// Screen Card Component
-function ScreenCard({ screen }: { screen: Screen }) {
-  const [showPassword, setShowPassword] = useState(false)
-  const [copied, setCopied] = useState<string | null>(null)
+// ─── CompraCard ───────────────────────────────────────────────────────────────
 
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(field)
-    setTimeout(() => setCopied(null), 2000)
-  }
-
-  const platformColors: Record<string, string> = {
-    Netflix: "bg-red-500",
-    "Disney+": "bg-blue-500",
-    "HBO Max": "bg-purple-500",
-    "Amazon Prime": "bg-cyan-500",
-    Spotify: "bg-green-500",
-  }
+function CompraCard({ compra }: { compra: Compra }) {
+  const serviceName = compra.oferta?.servicios?.[0]?.name ?? `Oferta #${compra.oferta_id}`
+  const color = compra.oferta?.servicios?.[0]?.primary_color ?? '#6B7280'
 
   return (
-    <Card className={cn(
-      "bg-card border-border overflow-hidden",
-      screen.status === "expirado" && "opacity-60"
-    )}>
-      <div className={cn("h-1", platformColors[screen.platform] || "bg-primary")} />
+    <Card className="bg-card border-border overflow-hidden">
+      <div className="h-1" style={{ backgroundColor: color }} />
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-foreground">{screen.platform}</span>
-            <Badge variant={screen.status === "activo" ? "default" : "destructive"}>
-              {screen.status}
-            </Badge>
+            <PackageCheck className="w-4 h-4" style={{ color }} />
+            <span className="font-semibold text-foreground">{serviceName}</span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            Expira: {new Date(screen.expiry).toLocaleDateString("es-ES")}
-          </span>
-        </div>
-
-        <div className="space-y-2 text-sm">
-          {/* Email */}
-          <div className="flex items-center justify-between bg-secondary/30 rounded px-3 py-2">
-            <div>
-              <span className="text-xs text-muted-foreground">Email</span>
-              <p className="text-foreground">{screen.email}</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => copyToClipboard(screen.email, `email-${screen.id}`)}
-            >
-              {copied === `email-${screen.id}` ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-
-          {/* Password */}
-          <div className="flex items-center justify-between bg-secondary/30 rounded px-3 py-2">
-            <div>
-              <span className="text-xs text-muted-foreground">Contraseña</span>
-              <p className="text-foreground font-mono">
-                {showPassword ? screen.password : "••••••••"}
-              </p>
-            </div>
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => copyToClipboard(screen.password, `pass-${screen.id}`)}
-              >
-                {copied === `pass-${screen.id}` ? (
-                  <Check className="w-4 h-4 text-green-500" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Profile & PIN */}
-          <div className="flex gap-2">
-            <div className="flex-1 bg-secondary/30 rounded px-3 py-2">
-              <span className="text-xs text-muted-foreground">Perfil</span>
-              <p className="text-foreground">{screen.profile}</p>
-            </div>
-            {screen.pin && (
-              <div className="bg-secondary/30 rounded px-3 py-2">
-                <span className="text-xs text-muted-foreground">PIN</span>
-                <p className="text-foreground font-mono">{screen.pin}</p>
-              </div>
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-xs",
+              compra.estado === 'aprobada' ? "text-green-500 border-green-500/30" :
+              compra.estado === 'rechazada' ? "text-red-500 border-red-500/30" :
+              "text-yellow-500 border-yellow-500/30"
             )}
-          </div>
+          >
+            {compra.estado}
+          </Badge>
         </div>
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>${compra.precio_compra.toLocaleString('es-CO')}</span>
+          <span>{new Date(compra.created_at).toLocaleDateString('es-ES')}</span>
+        </div>
+        {compra.estado === 'pendiente' && (
+          <p className="text-xs text-yellow-500 mt-2">
+            Pendiente de aprobación por un administrador
+          </p>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-// Recharge Dialog
+// ─── RechargeDialog ───────────────────────────────────────────────────────────
+
 function RechargeDialog({
   isOpen,
   onClose,
@@ -455,29 +395,34 @@ function RechargeDialog({
   isOpen: boolean
   onClose: () => void
   currentBalance: number
-  onSuccess: (newBalance: number) => void
+  onSuccess: () => Promise<void>
 }) {
   const [amount, setAmount] = useState("")
-  const [method, setMethod] = useState<string | null>(null)
+  const [referencia, setReferencia] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const presetAmounts = [10, 25, 50, 100]
-  const paymentMethods = [
-    { id: "nequi", name: "Nequi", icon: "💜" },
-    { id: "daviplata", name: "Daviplata", icon: "🔴" },
-    { id: "bancolombia", name: "Bancolombia", icon: "💛" },
-    { id: "paypal", name: "PayPal", icon: "💙" },
-  ]
+  const presetAmounts = [10000, 25000, 50000, 100000]
 
   const handleRecharge = async () => {
-    if (!amount || !method) return
+    if (!amount) return
+    const monto = parseFloat(amount)
+    if (isNaN(monto) || monto <= 0) return
 
     setIsLoading(true)
+    setError(null)
     try {
-      const result = await api.rechargeBalance(parseFloat(amount), method)
-      onSuccess(result.newBalance)
-    } catch (error) {
-      console.error("Error recargando:", error)
+      await api.createRecarga(monto, referencia || undefined)
+      setSuccess(true)
+      setTimeout(async () => {
+        setSuccess(false)
+        setAmount("")
+        setReferencia("")
+        await onSuccess()
+      }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al enviar solicitud')
     } finally {
       setIsLoading(false)
     }
@@ -487,105 +432,89 @@ function RechargeDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md bg-background border-border">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Recargar Saldo</DialogTitle>
+          <DialogTitle className="text-foreground">Solicitar Recarga</DialogTitle>
           <DialogDescription>
-            Saldo actual: <span className="text-primary font-semibold">${currentBalance.toFixed(2)}</span>
+            Saldo actual: <span className="text-primary font-semibold">${currentBalance.toLocaleString('es-CO')}</span>
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Amount Selection */}
-          <div className="space-y-3">
-            <Label className="text-foreground">Monto a recargar</Label>
-            <div className="grid grid-cols-4 gap-2">
-              {presetAmounts.map((preset) => (
-                <Button
-                  key={preset}
-                  variant={amount === String(preset) ? "default" : "outline"}
-                  onClick={() => setAmount(String(preset))}
-                  className={cn(
-                    amount === String(preset) && "bg-primary text-primary-foreground"
-                  )}
-                >
-                  ${preset}
-                </Button>
-              ))}
+        {success ? (
+          <div className="py-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8 text-primary" />
             </div>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <p className="font-semibold text-foreground">¡Solicitud enviada!</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Tu recarga está pendiente de aprobación por un administrador.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <Label>Monto a recargar (COP)</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {presetAmounts.map((preset) => (
+                  <Button
+                    key={preset}
+                    variant={amount === String(preset) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAmount(String(preset))}
+                    className={cn("text-xs", amount === String(preset) && "bg-primary text-primary-foreground")}
+                  >
+                    ${preset / 1000}k
+                  </Button>
+                ))}
+              </div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  type="number"
+                  placeholder="Otro monto"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="pl-7"
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Referencia de pago (opcional)</Label>
               <Input
-                type="number"
-                placeholder="Otro monto"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="pl-7"
+                placeholder="Número de transferencia / comprobante"
+                value={referencia}
+                onChange={(e) => setReferencia(e.target.value)}
               />
             </div>
-          </div>
 
-          {/* Payment Method */}
-          <div className="space-y-3">
-            <Label className="text-foreground">Método de pago</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {paymentMethods.map((pm) => (
-                <Button
-                  key={pm.id}
-                  variant={method === pm.id ? "default" : "outline"}
-                  onClick={() => setMethod(pm.id)}
-                  className={cn(
-                    "justify-start gap-2",
-                    method === pm.id && "bg-primary text-primary-foreground"
-                  )}
-                >
-                  <span>{pm.icon}</span>
-                  {pm.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Summary */}
-          {amount && method && (
-            <Card className="bg-secondary/30 border-border">
-              <CardContent className="p-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">Monto</span>
-                  <span className="text-foreground">${parseFloat(amount).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm border-t border-border pt-2">
-                  <span className="text-muted-foreground">Nuevo saldo</span>
-                  <span className="text-primary font-bold">
-                    ${(currentBalance + parseFloat(amount)).toFixed(2)}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Button
-            className="w-full bg-primary text-primary-foreground"
-            disabled={!amount || !method || isLoading}
-            onClick={handleRecharge}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              <>
-                <CreditCard className="w-4 h-4 mr-2" />
-                Recargar ${amount || "0"}
-              </>
+            {error && (
+              <p className="text-sm text-red-500">{error}</p>
             )}
-          </Button>
-        </div>
+
+            <Button
+              className="w-full bg-primary text-primary-foreground"
+              disabled={!amount || parseFloat(amount) <= 0 || isLoading}
+              onClick={handleRecharge}
+            >
+              {isLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</>
+              ) : (
+                <><CreditCard className="w-4 h-4 mr-2" />Solicitar ${amount ? parseFloat(amount).toLocaleString('es-CO') : '0'}</>
+              )}
+            </Button>
+
+            <p className="text-xs text-muted-foreground text-center">
+              La recarga se aprobará manualmente por un administrador
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )
 }
 
-// Loading Skeleton
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+
 function LoadingSkeleton() {
   return (
     <div className="space-y-3 animate-pulse">

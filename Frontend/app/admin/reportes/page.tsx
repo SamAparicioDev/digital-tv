@@ -1,460 +1,263 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-  AreaChart,
-  Area,
-} from "recharts";
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Users,
-  ShoppingCart,
-  Monitor,
-  Download,
-  Calendar,
-} from "lucide-react";
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area,
+} from "recharts"
+import { TrendingUp, DollarSign, ShoppingCart, Users, RefreshCw, Loader2, AlertCircle } from "lucide-react"
+import { FadeIn } from "@/components/animations/motion"
+import { api, type AdminTransaccion } from "@/lib/api"
 
-const monthlyRevenue = [
-  { month: "Ene", ingresos: 4500000, gastos: 1200000 },
-  { month: "Feb", ingresos: 5200000, gastos: 1400000 },
-  { month: "Mar", ingresos: 4800000, gastos: 1100000 },
-  { month: "Abr", ingresos: 6100000, gastos: 1600000 },
-  { month: "May", ingresos: 5800000, gastos: 1300000 },
-  { month: "Jun", ingresos: 7200000, gastos: 1800000 },
-  { month: "Jul", ingresos: 6500000, gastos: 1500000 },
-  { month: "Ago", ingresos: 7800000, gastos: 2000000 },
-  { month: "Sep", ingresos: 8200000, gastos: 2100000 },
-  { month: "Oct", ingresos: 7500000, gastos: 1900000 },
-  { month: "Nov", ingresos: 9100000, gastos: 2300000 },
-  { month: "Dic", ingresos: 10500000, gastos: 2600000 },
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const salesByService = [
-  { name: "Netflix", value: 35, color: "#E50914" },
-  { name: "Disney+", value: 25, color: "#113CCF" },
-  { name: "HBO Max", value: 18, color: "#5822B4" },
-  { name: "Prime Video", value: 12, color: "#00A8E1" },
-  { name: "Spotify", value: 10, color: "#1DB954" },
-];
+const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
-const dailySales = [
-  { day: "Lun", ventas: 45, recargas: 32 },
-  { day: "Mar", ventas: 52, recargas: 41 },
-  { day: "Mié", ventas: 49, recargas: 38 },
-  { day: "Jue", ventas: 63, recargas: 45 },
-  { day: "Vie", ventas: 78, recargas: 56 },
-  { day: "Sáb", ventas: 85, recargas: 62 },
-  { day: "Dom", ventas: 71, recargas: 48 },
-];
+function buildMonthlyData(txs: AdminTransaccion[]) {
+  const map: Record<string, { ingresos: number; ventas: number; count: number }> = {}
+  MONTHS.forEach((m) => { map[m] = { ingresos: 0, ventas: 0, count: 0 } })
 
-const userGrowth = [
-  { month: "Ene", usuarios: 120, activos: 95 },
-  { month: "Feb", usuarios: 180, activos: 145 },
-  { month: "Mar", usuarios: 250, activos: 200 },
-  { month: "Abr", usuarios: 340, activos: 280 },
-  { month: "May", usuarios: 420, activos: 350 },
-  { month: "Jun", usuarios: 520, activos: 430 },
-  { month: "Jul", usuarios: 650, activos: 540 },
-  { month: "Ago", usuarios: 780, activos: 650 },
-  { month: "Sep", usuarios: 920, activos: 770 },
-  { month: "Oct", usuarios: 1080, activos: 900 },
-  { month: "Nov", usuarios: 1250, activos: 1050 },
-  { month: "Dic", usuarios: 1456, activos: 1220 },
-];
+  txs.forEach((t) => {
+    if (t.estado !== 'APROBADO') return
+    const month = MONTHS[new Date(t.created_at).getMonth()]
+    if (!map[month]) return
+    map[month].count++
+    if (t.tipo === 'deposit') map[month].ingresos += t.monto
+    if (t.tipo === 'withdraw') map[month].ventas += t.monto
+  })
 
-export default function AdminReportsPage() {
-  const [period, setPeriod] = useState("month");
+  return MONTHS.map((name) => ({ name, ...map[name] }))
+}
 
-  const kpis = [
-    {
-      title: "Ingresos Totales",
-      value: "$83.3M",
-      change: "+23.5%",
-      trend: "up",
-      icon: DollarSign,
-    },
-    {
-      title: "Usuarios Activos",
-      value: "1,220",
-      change: "+16.2%",
-      trend: "up",
-      icon: Users,
-    },
-    {
-      title: "Ventas del Mes",
-      value: "443",
-      change: "+8.7%",
-      trend: "up",
-      icon: ShoppingCart,
-    },
-    {
-      title: "Pantallas Vendidas",
-      value: "892",
-      change: "-2.3%",
-      trend: "down",
-      icon: Monitor,
-    },
-  ];
+function buildServiceData(txs: AdminTransaccion[]) {
+  const map: Record<string, number> = {}
+  txs.forEach((t) => {
+    if (t.estado !== 'APROBADO' || t.tipo !== 'withdraw') return
+    const name = t.compra?.oferta?.servicios?.[0]?.name ?? 'Otros'
+    map[name] = (map[name] ?? 0) + t.monto
+  })
+  return Object.entries(map)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([name, value], i) => ({ name, value, color: ['#EAB308','#22c55e','#3b82f6','#a855f7','#f43f5e'][i] ?? '#6B7280' }))
+}
+
+const CHART_STYLE = {
+  contentStyle: {
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+  },
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function AdminReportesPage() {
+  const [txs, setTxs] = useState<AdminTransaccion[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const data = await api.getAdminTransacciones()
+      setTxs(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando transacciones')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  // Computed
+  const aprobadas = txs.filter((t) => t.estado === 'APROBADO')
+  const totalIngresos = aprobadas.filter((t) => t.tipo === 'deposit').reduce((s, t) => s + t.monto, 0)
+  const totalVentas = aprobadas.filter((t) => t.tipo === 'withdraw').reduce((s, t) => s + t.monto, 0)
+  const totalTransacciones = txs.length
+  const usuarios = new Set(txs.map((t) => t.wallet?.user?.id).filter(Boolean)).size
+
+  const monthlyData = buildMonthlyData(txs)
+  const serviceData = buildServiceData(txs)
+
+  const summaryCards = [
+    { title: 'Ingresos totales (aprobados)', value: `$${totalIngresos.toLocaleString('es-CO')}`, icon: DollarSign, color: 'text-green-500', bg: 'bg-green-500/10', trend: 'deposit aprobados' },
+    { title: 'Ventas totales (aprobadas)', value: `$${totalVentas.toLocaleString('es-CO')}`, icon: ShoppingCart, color: 'text-primary', bg: 'bg-primary/10', trend: 'withdraw aprobados' },
+    { title: 'Total transacciones', value: String(totalTransacciones), icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-500/10', trend: 'todas' },
+    { title: 'Usuarios con actividad', value: String(usuarios), icon: Users, color: 'text-purple-500', bg: 'bg-purple-500/10', trend: 'únicos' },
+  ]
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Reportes y Análisis
-          </h1>
-          <p className="text-muted-foreground">
-            Métricas detalladas de tu negocio
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[180px]">
-              <Calendar className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">Esta semana</SelectItem>
-              <SelectItem value="month">Este mes</SelectItem>
-              <SelectItem value="quarter">Este trimestre</SelectItem>
-              <SelectItem value="year">Este año</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar
+      <FadeIn>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Reportes</h1>
+            <p className="text-muted-foreground">Estadísticas reales de transacciones</p>
+          </div>
+          <Button variant="outline" className="bg-transparent" onClick={load} disabled={isLoading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualizar
           </Button>
         </div>
-      </div>
+      </FadeIn>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi, index) => (
-          <motion.div
-            key={kpi.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <Card className="bg-card border-border">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <kpi.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div
-                    className={`flex items-center gap-1 text-sm ${
-                      kpi.trend === "up" ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {kpi.trend === "up" ? (
-                      <TrendingUp className="w-4 h-4" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4" />
-                    )}
-                    {kpi.change}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <p className="text-sm text-muted-foreground">{kpi.title}</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {kpi.value}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center gap-3 py-20 text-muted-foreground">
+          <AlertCircle className="w-10 h-10 text-red-500" />
+          <p>{error}</p>
+          <Button variant="outline" size="sm" onClick={load}>Reintentar</Button>
+        </div>
+      ) : (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {summaryCards.map((card, i) => (
+              <FadeIn key={card.title} delay={i * 0.1}>
+                <Card className="bg-card border-border">
+                  <CardContent className="p-6">
+                    <div className={`p-2 rounded-lg ${card.bg} w-fit mb-4`}>
+                      <card.icon className={`w-5 h-5 ${card.color}`} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">{card.title}</p>
+                    <p className="text-2xl font-bold text-foreground mt-1">{card.value}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{card.trend}</p>
+                  </CardContent>
+                </Card>
+              </FadeIn>
+            ))}
+          </div>
 
-      <Tabs defaultValue="revenue" className="space-y-6">
-        <TabsList className="bg-secondary">
-          <TabsTrigger value="revenue">Ingresos</TabsTrigger>
-          <TabsTrigger value="sales">Ventas</TabsTrigger>
-          <TabsTrigger value="users">Usuarios</TabsTrigger>
-          <TabsTrigger value="services">Servicios</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="revenue" className="space-y-6">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Ingresos vs Gastos Mensuales</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyRevenue}>
-                    <defs>
-                      <linearGradient
-                        id="colorIngresos"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="oklch(0.85 0.18 85)"
-                          stopOpacity={0.3}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="oklch(0.85 0.18 85)"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                      <linearGradient
-                        id="colorGastos"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="5%"
-                          stopColor="#ef4444"
-                          stopOpacity={0.3}
-                        />
-                        <stop
-                          offset="95%"
-                          stopColor="#ef4444"
-                          stopOpacity={0}
-                        />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="oklch(0.28 0 0)"
-                    />
-                    <XAxis dataKey="month" stroke="oklch(0.65 0 0)" />
-                    <YAxis
-                      stroke="oklch(0.65 0 0)"
-                      tickFormatter={(value) =>
-                        `$${(value / 1000000).toFixed(1)}M`
-                      }
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "oklch(0.17 0 0)",
-                        border: "1px solid oklch(0.28 0 0)",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => [
-                        `$${value.toLocaleString("es-CO")}`,
-                      ]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="ingresos"
-                      stroke="oklch(0.85 0.18 85)"
-                      fillOpacity={1}
-                      fill="url(#colorIngresos)"
-                      strokeWidth={2}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="gastos"
-                      stroke="#ef4444"
-                      fillOpacity={1}
-                      fill="url(#colorGastos)"
-                      strokeWidth={2}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sales" className="space-y-6">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Ventas y Recargas por Día</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailySales}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="oklch(0.28 0 0)"
-                    />
-                    <XAxis dataKey="day" stroke="oklch(0.65 0 0)" />
-                    <YAxis stroke="oklch(0.65 0 0)" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "oklch(0.17 0 0)",
-                        border: "1px solid oklch(0.28 0 0)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Bar
-                      dataKey="ventas"
-                      fill="oklch(0.85 0.18 85)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar
-                      dataKey="recargas"
-                      fill="oklch(0.7 0.15 85)"
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="users" className="space-y-6">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Crecimiento de Usuarios</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={userGrowth}>
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="oklch(0.28 0 0)"
-                    />
-                    <XAxis dataKey="month" stroke="oklch(0.65 0 0)" />
-                    <YAxis stroke="oklch(0.65 0 0)" />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "oklch(0.17 0 0)",
-                        border: "1px solid oklch(0.28 0 0)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="usuarios"
-                      stroke="oklch(0.85 0.18 85)"
-                      strokeWidth={3}
-                      dot={{ fill: "oklch(0.85 0.18 85)", strokeWidth: 2 }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="activos"
-                      stroke="#22c55e"
-                      strokeWidth={3}
-                      dot={{ fill: "#22c55e", strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="services" className="space-y-6">
+          {/* Monthly charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <FadeIn delay={0.2}>
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle>Ingresos vs. Ventas por mes</CardTitle>
+                  <CardDescription>Solo transacciones aprobadas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[280px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={monthlyData}>
+                        <defs>
+                          <linearGradient id="gIngresos" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="gVentas" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} />
+                        <Tooltip {...CHART_STYLE} formatter={(v: number) => [`$${v.toLocaleString('es-CO')}`, '']} />
+                        <Area type="monotone" dataKey="ingresos" name="Ingresos" stroke="#22c55e" fillOpacity={1} fill="url(#gIngresos)" strokeWidth={2} />
+                        <Area type="monotone" dataKey="ventas" name="Ventas" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#gVentas)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </FadeIn>
+
+            <FadeIn delay={0.3}>
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle>Ventas por servicio</CardTitle>
+                  <CardDescription>Top 5 servicios más vendidos (monto aprobado)</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {serviceData.length > 0 ? (
+                    <div className="h-[280px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={serviceData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={100}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
+                            {serviceData.map((entry, i) => (
+                              <Cell key={i} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip {...CHART_STYLE} formatter={(v: number) => [`$${v.toLocaleString('es-CO')}`, 'Monto']} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className="h-[280px] flex items-center justify-center text-muted-foreground text-sm">
+                      No hay ventas aprobadas con datos de servicio
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </FadeIn>
+          </div>
+
+          {/* Bar chart */}
+          <FadeIn delay={0.4}>
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle>Ventas por Servicio</CardTitle>
+                <CardTitle>Volumen mensual de transacciones</CardTitle>
+                <CardDescription>Cantidad de transacciones aprobadas por mes</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px]">
+                <div className="h-[240px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={salesByService}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {salesByService.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "oklch(0.17 0 0)",
-                          border: "1px solid oklch(0.28 0 0)",
-                          borderRadius: "8px",
-                        }}
-                        formatter={(value: number) => [`${value}%`]}
-                      />
-                    </PieChart>
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} allowDecimals={false} />
+                      <Tooltip {...CHART_STYLE} />
+                      <Bar dataKey="count" name="Transacciones" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
+          </FadeIn>
 
+          {/* State breakdown */}
+          <FadeIn delay={0.5}>
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle>Distribución de Servicios</CardTitle>
+                <CardTitle>Estado de transacciones</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {salesByService.map((service, index) => (
-                    <motion.div
-                      key={service.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-4"
-                    >
-                      <div
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: service.color }}
-                      />
-                      <div className="flex-1">
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">
-                            {service.name}
-                          </span>
-                          <span className="text-sm text-muted-foreground">
-                            {service.value}%
-                          </span>
-                        </div>
-                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${service.value}%` }}
-                            transition={{ duration: 1, delay: index * 0.1 }}
-                            className="h-full rounded-full"
-                            style={{ backgroundColor: service.color }}
-                          />
-                        </div>
-                      </div>
-                    </motion.div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  {[
+                    { label: 'Aprobadas', count: txs.filter((t) => t.estado === 'APROBADO').length, className: 'text-green-500' },
+                    { label: 'Pendientes', count: txs.filter((t) => t.estado === 'PENDIENTE').length, className: 'text-yellow-500' },
+                    { label: 'Rechazadas', count: txs.filter((t) => t.estado === 'RECHAZADO').length, className: 'text-red-500' },
+                  ].map((s) => (
+                    <div key={s.label} className="p-4 rounded-lg bg-secondary/30">
+                      <p className={`text-3xl font-bold ${s.className}`}>{s.count}</p>
+                      <p className="text-sm text-muted-foreground mt-1">{s.label}</p>
+                    </div>
                   ))}
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+          </FadeIn>
+        </>
+      )}
     </div>
-  );
+  )
 }

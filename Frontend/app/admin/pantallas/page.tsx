@@ -1,584 +1,264 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useState, useEffect, Suspense } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { FadeIn } from "@/components/animations/motion"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Monitor,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Copy,
-  Eye,
-  EyeOff,
-  CheckCircle,
-  XCircle,
-  Clock,
-} from "lucide-react";
-import { useSearchParams, Suspense } from "next/navigation";
-import Loading from "./loading"; // Import the loading component
+  Monitor, Search, RefreshCw, Loader2, AlertCircle, Package, Check, X,
+  Layers, Clock, ShoppingBag, Trash2,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { api, type Oferta } from "@/lib/api"
 
-interface Screen {
-  id: string;
-  service: string;
-  email: string;
-  password: string;
-  profile: string;
-  pin: string;
-  status: "available" | "sold" | "expired";
-  expiresAt: string;
-  assignedTo: string | null;
-  price: number;
-}
+export default function AdminPantallasPage() {
+  const [ofertas, setOfertas] = useState<Oferta[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
 
-const mockScreens: Screen[] = [
-  {
-    id: "SCR001",
-    service: "Netflix",
-    email: "cuenta1@email.com",
-    password: "Pass123!",
-    profile: "Perfil 2",
-    pin: "1234",
-    status: "available",
-    expiresAt: "2026-03-15",
-    assignedTo: null,
-    price: 25000,
-  },
-  {
-    id: "SCR002",
-    service: "Disney+",
-    email: "disney@email.com",
-    password: "Disney456!",
-    profile: "Perfil 1",
-    pin: "5678",
-    status: "sold",
-    expiresAt: "2026-02-28",
-    assignedTo: "Juan Pérez",
-    price: 20000,
-  },
-  {
-    id: "SCR003",
-    service: "HBO Max",
-    email: "hbo@email.com",
-    password: "HBO789!",
-    profile: "Perfil 3",
-    pin: "9012",
-    status: "expired",
-    expiresAt: "2026-01-10",
-    assignedTo: null,
-    price: 22000,
-  },
-  {
-    id: "SCR004",
-    service: "Prime Video",
-    email: "prime@email.com",
-    password: "Prime321!",
-    profile: "Perfil 1",
-    pin: "3456",
-    status: "available",
-    expiresAt: "2026-04-20",
-    assignedTo: null,
-    price: 18000,
-  },
-  {
-    id: "SCR005",
-    service: "Spotify",
-    email: "spotify@email.com",
-    password: "Spot654!",
-    profile: "N/A",
-    pin: "N/A",
-    status: "sold",
-    expiresAt: "2026-05-01",
-    assignedTo: "María García",
-    price: 15000,
-  },
-];
-
-const services = [
-  "Netflix",
-  "Disney+",
-  "HBO Max",
-  "Prime Video",
-  "Spotify",
-  "YouTube Premium",
-  "Paramount+",
-  "Star+",
-];
-
-export default function AdminScreensPage() {
-  const [screens, setScreens] = useState<Screen[]>(mockScreens);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterService, setFilterService] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>(
-    {}
-  );
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newScreen, setNewScreen] = useState({
-    service: "",
-    email: "",
-    password: "",
-    profile: "",
-    pin: "",
-    expiresAt: "",
-    price: "",
-  });
-
-  const filteredScreens = screens.filter((screen) => {
-    const matchesSearch =
-      screen.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      screen.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (screen.assignedTo?.toLowerCase() || "").includes(
-        searchTerm.toLowerCase()
-      );
-    const matchesService =
-      filterService === "all" || screen.service === filterService;
-    const matchesStatus =
-      filterStatus === "all" || screen.status === filterStatus;
-    return matchesSearch && matchesService && matchesStatus;
-  });
-
-  const togglePassword = (id: string) => {
-    setShowPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const handleAddScreen = () => {
-    const screen: Screen = {
-      id: `SCR${String(screens.length + 1).padStart(3, "0")}`,
-      service: newScreen.service,
-      email: newScreen.email,
-      password: newScreen.password,
-      profile: newScreen.profile,
-      pin: newScreen.pin,
-      status: "available",
-      expiresAt: newScreen.expiresAt,
-      assignedTo: null,
-      price: Number.parseInt(newScreen.price),
-    };
-    setScreens([...screens, screen]);
-    setNewScreen({
-      service: "",
-      email: "",
-      password: "",
-      profile: "",
-      pin: "",
-      expiresAt: "",
-      price: "",
-    });
-    setIsAddDialogOpen(false);
-  };
-
-  const handleDeleteScreen = (id: string) => {
-    setScreens(screens.filter((s) => s.id !== id));
-  };
-
-  const getStatusBadge = (status: Screen["status"]) => {
-    switch (status) {
-      case "available":
-        return (
-          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Disponible
-          </Badge>
-        );
-      case "sold":
-        return (
-          <Badge className="bg-primary/20 text-primary border-primary/30">
-            <Clock className="w-3 h-3 mr-1" />
-            Vendida
-          </Badge>
-        );
-      case "expired":
-        return (
-          <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
-            <XCircle className="w-3 h-3 mr-1" />
-            Expirada
-          </Badge>
-        );
+  const load = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const data = await api.getOfertas()
+      setOfertas(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando ofertas')
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
-  const stats = {
-    total: screens.length,
-    available: screens.filter((s) => s.status === "available").length,
-    sold: screens.filter((s) => s.status === "sold").length,
-    expired: screens.filter((s) => s.status === "expired").length,
-  };
+  useEffect(() => { load() }, [])
+
+  const handleToggleActive = async (oferta: Oferta) => {
+    try {
+      const updated = await api.updateOferta(oferta.id, { is_active: !oferta.is_active })
+      setOfertas((prev) => prev.map((o) => o.id === updated.id ? updated : o))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error actualizando oferta')
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    setDeletingId(id)
+    try {
+      await api.deleteOferta(id)
+      setOfertas((prev) => prev.filter((o) => o.id !== id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error eliminando oferta')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const filtered = ofertas.filter((o) => {
+    const label = o.servicios.map((s) => s.name).join(' ').toLowerCase()
+    const matchSearch = label.includes(searchQuery.toLowerCase())
+    const matchActive = filterActive === 'all' || (filterActive === 'active' ? o.is_active : !o.is_active)
+    return matchSearch && matchActive
+  })
+
+  const totalStock = ofertas.reduce((s, o) => s + o.stock, 0)
+  const activas = ofertas.filter((o) => o.is_active).length
 
   return (
-    <Suspense fallback={<Loading />}> {/* Wrap the component with Suspense */}
+    <Suspense>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Gestión de Pantallas
-            </h1>
-            <p className="text-muted-foreground">
-              Administra las cuentas y pantallas de streaming
-            </p>
+        <FadeIn>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Gestión de Ofertas</h1>
+              <p className="text-muted-foreground">Paquetes de streaming disponibles para la venta</p>
+            </div>
+            <Button variant="outline" className="bg-transparent" onClick={load} disabled={isLoading}>
+              <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
+              Actualizar
+            </Button>
           </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Plus className="w-4 h-4 mr-2" />
-                Agregar Pantalla
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-card border-border">
-              <DialogHeader>
-                <DialogTitle>Nueva Pantalla</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>Servicio</Label>
-                  <Select
-                    value={newScreen.service}
-                    onValueChange={(value) =>
-                      setNewScreen({ ...newScreen, service: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar servicio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service} value={service}>
-                          {service}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Email</Label>
-                  <Input
-                    value={newScreen.email}
-                    onChange={(e) =>
-                      setNewScreen({ ...newScreen, email: e.target.value })
-                    }
-                    placeholder="correo@ejemplo.com"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Contraseña</Label>
-                  <Input
-                    type="password"
-                    value={newScreen.password}
-                    onChange={(e) =>
-                      setNewScreen({ ...newScreen, password: e.target.value })
-                    }
-                    placeholder="Contraseña de la cuenta"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Perfil</Label>
-                    <Input
-                      value={newScreen.profile}
-                      onChange={(e) =>
-                        setNewScreen({ ...newScreen, profile: e.target.value })
-                      }
-                      placeholder="Perfil 1"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>PIN</Label>
-                    <Input
-                      value={newScreen.pin}
-                      onChange={(e) =>
-                        setNewScreen({ ...newScreen, pin: e.target.value })
-                      }
-                      placeholder="1234"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Fecha de Expiración</Label>
-                    <Input
-                      type="date"
-                      value={newScreen.expiresAt}
-                      onChange={(e) =>
-                        setNewScreen({ ...newScreen, expiresAt: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Precio (COP)</Label>
-                    <Input
-                      type="number"
-                      value={newScreen.price}
-                      onChange={(e) =>
-                        setNewScreen({ ...newScreen, price: e.target.value })
-                      }
-                      placeholder="25000"
-                    />
-                  </div>
-                </div>
-                <Button
-                  onClick={handleAddScreen}
-                  className="w-full bg-primary text-primary-foreground"
-                >
-                  Agregar Pantalla
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        </FadeIn>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            {
-              label: "Total",
-              value: stats.total,
-              icon: Monitor,
-              color: "text-foreground",
-            },
-            {
-              label: "Disponibles",
-              value: stats.available,
-              icon: CheckCircle,
-              color: "text-green-400",
-            },
-            {
-              label: "Vendidas",
-              value: stats.sold,
-              icon: Clock,
-              color: "text-primary",
-            },
-            {
-              label: "Expiradas",
-              value: stats.expired,
-              icon: XCircle,
-              color: "text-red-400",
-            },
-          ].map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
+            { label: 'Total ofertas', value: ofertas.length, icon: Package, color: 'text-primary', bg: 'bg-primary/10' },
+            { label: 'Activas', value: activas, icon: Check, color: 'text-green-500', bg: 'bg-green-500/10' },
+            { label: 'Inactivas', value: ofertas.length - activas, icon: X, color: 'text-red-500', bg: 'bg-red-500/10' },
+            { label: 'Stock total', value: totalStock, icon: Layers, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          ].map((s, i) => (
+            <FadeIn key={s.label} delay={i * 0.1}>
               <Card className="bg-card border-border">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">{stat.label}</p>
-                      <p className={`text-2xl font-bold ${stat.color}`}>
-                        {stat.value}
-                      </p>
+                  <div className="flex items-center gap-3">
+                    <div className={cn("p-2 rounded-lg", s.bg)}>
+                      <s.icon className={cn("w-5 h-5", s.color)} />
                     </div>
-                    <stat.icon className={`w-8 h-8 ${stat.color} opacity-50`} />
+                    <div>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <p className="text-xl font-bold text-foreground">{s.value}</p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
+            </FadeIn>
           ))}
         </div>
 
         {/* Filters */}
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por email, ID o usuario..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-secondary border-border"
-                />
-              </div>
-              <Select value={filterService} onValueChange={setFilterService}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Servicio" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los servicios</SelectItem>
-                  {services.map((service) => (
-                    <SelectItem key={service} value={service}>
-                      {service}
-                    </SelectItem>
+        <FadeIn delay={0.2}>
+          <Card className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por servicio..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  {[
+                    { key: 'all', label: 'Todas' },
+                    { key: 'active', label: 'Activas' },
+                    { key: 'inactive', label: 'Inactivas' },
+                  ].map((f) => (
+                    <Button
+                      key={f.key}
+                      variant={filterActive === f.key ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setFilterActive(f.key as typeof filterActive)}
+                      className={cn(filterActive === f.key ? 'bg-primary text-primary-foreground' : 'hover:border-primary hover:text-primary')}
+                    >
+                      {f.label}
+                    </Button>
                   ))}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los estados</SelectItem>
-                  <SelectItem value="available">Disponibles</SelectItem>
-                  <SelectItem value="sold">Vendidas</SelectItem>
-                  <SelectItem value="expired">Expiradas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </FadeIn>
 
-        {/* Table */}
-        <Card className="bg-card border-border overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              Pantallas ({filteredScreens.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-border hover:bg-secondary/50">
-                    <TableHead>ID</TableHead>
-                    <TableHead>Servicio</TableHead>
-                    <TableHead>Credenciales</TableHead>
-                    <TableHead>Perfil/PIN</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Asignado a</TableHead>
-                    <TableHead>Expira</TableHead>
-                    <TableHead>Precio</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence>
-                    {filteredScreens.map((screen, index) => (
-                      <motion.tr
-                        key={screen.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="border-border hover:bg-secondary/30"
-                      >
-                        <TableCell className="font-mono text-sm">
-                          {screen.id}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{screen.service}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm truncate max-w-[150px]">
-                                {screen.email}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => copyToClipboard(screen.email)}
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-mono">
-                                {showPasswords[screen.id]
-                                  ? screen.password
-                                  : "••••••••"}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => togglePassword(screen.id)}
-                              >
-                                {showPasswords[screen.id] ? (
-                                  <EyeOff className="w-3 h-3" />
-                                ) : (
-                                  <Eye className="w-3 h-3" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6"
-                                onClick={() => copyToClipboard(screen.password)}
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <p>{screen.profile}</p>
-                            <p className="text-muted-foreground">
-                              PIN: {screen.pin}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(screen.status)}</TableCell>
-                        <TableCell>
-                          {screen.assignedTo || (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>{screen.expiresAt}</TableCell>
-                        <TableCell>
-                          ${screen.price.toLocaleString("es-CO")}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-400 hover:text-red-300"
-                              onClick={() => handleDeleteScreen(screen.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
+        {/* Offers grid */}
+        <FadeIn delay={0.3}>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
-          </CardContent>
-        </Card>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
+              <AlertCircle className="w-10 h-10 text-red-500" />
+              <p>{error}</p>
+              <Button variant="outline" size="sm" onClick={load}>Reintentar</Button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center text-muted-foreground py-12">
+              <Monitor className="w-12 h-12 mx-auto mb-2 opacity-40" />
+              <p>No hay ofertas registradas</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.map((oferta, index) => {
+                const serviceName = oferta.servicios.length > 0
+                  ? oferta.servicios.map((s) => s.name).join(' + ')
+                  : `Oferta #${oferta.id}`
+                const color = oferta.servicios[0]?.primary_color ?? '#6B7280'
+
+                return (
+                  <Card
+                    key={oferta.id}
+                    className={cn(
+                      "bg-card border-border overflow-hidden transition-all duration-200",
+                      !oferta.is_active && "opacity-60"
+                    )}
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <div className="h-1" style={{ backgroundColor: color }} />
+                    <CardContent className="p-4">
+                      {/* Header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground truncate">{serviceName}</h3>
+                          <p className="text-2xl font-bold text-primary mt-1">
+                            ${oferta.precio.toLocaleString('es-CO')}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge variant="outline" className={cn(
+                            "text-xs",
+                            oferta.is_active ? "text-green-500 border-green-500/30" : "text-red-500 border-red-500/30"
+                          )}>
+                            {oferta.is_active ? 'Activa' : 'Inactiva'}
+                          </Badge>
+                          {oferta.cuenta_completa && (
+                            <Badge variant="outline" className="text-xs text-blue-400 border-blue-400/30">
+                              Cuenta completa
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="space-y-2 mb-3">
+                        {oferta.servicios.map((s) => (
+                          <div key={s.id} className="flex items-center justify-between text-sm text-muted-foreground bg-secondary/30 rounded px-3 py-1.5">
+                            <span className="font-medium text-foreground">{s.name}</span>
+                            <span className="flex items-center gap-2">
+                              <Monitor className="w-3 h-3" />
+                              {s.pivot.numero_perfiles} perfil{s.pivot.numero_perfiles > 1 ? 'es' : ''}
+                              <Clock className="w-3 h-3 ml-1" />
+                              {s.pivot.duracion_dias}d
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm mb-3">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <ShoppingBag className="w-4 h-4" />
+                          Stock: <span className={cn("font-semibold ml-1", oferta.stock > 0 ? 'text-foreground' : 'text-red-500')}>{oferta.stock}</span>
+                        </span>
+                        {oferta.garantia_dias > 0 && (
+                          <span className="text-muted-foreground text-xs">
+                            Garantía {oferta.garantia_dias} días
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 bg-transparent"
+                          onClick={() => handleToggleActive(oferta)}
+                        >
+                          {oferta.is_active ? <><X className="w-4 h-4 mr-1" />Desactivar</> : <><Check className="w-4 h-4 mr-1" />Activar</>}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(oferta.id)}
+                          disabled={deletingId === oferta.id}
+                        >
+                          {deletingId === oferta.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </FadeIn>
       </div>
     </Suspense>
-  );
+  )
 }

@@ -1,0 +1,47 @@
+# ── Stage 1: dependencias PHP via Composer ─────────────────────────────────────
+FROM composer:2 AS deps
+WORKDIR /app
+COPY Backend/composer.json Backend/composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-scripts \
+    --no-interaction \
+    --prefer-dist \
+    --ignore-platform-reqs
+
+# ── Stage 2: imagen de producción PHP ─────────────────────────────────────────
+FROM php:8.2-cli-alpine
+
+RUN apk add --no-cache libpq \
+    && apk add --no-cache --virtual .build-deps postgresql-dev \
+    && docker-php-ext-install pdo_pgsql bcmath \
+    && apk del .build-deps \
+    && echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini
+
+WORKDIR /app
+
+# Código fuente del backend
+COPY Backend/ .
+# .env con credenciales de Railway (está en la raíz del repo)
+COPY .env .env
+# Vendor de composer
+COPY --from=deps /app/vendor vendor/
+
+# Directorios requeridos por Laravel
+RUN mkdir -p \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/framework/cache \
+    storage/logs \
+    bootstrap/cache \
+    && chmod -R 777 storage bootstrap/cache
+
+# Registra service providers (no necesita BD)
+RUN php artisan package:discover --ansi
+
+EXPOSE 8000
+
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

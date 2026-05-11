@@ -1,53 +1,146 @@
-// API Service - Preparado para conectar con Laravel
-// Cambia USE_MOCK a false y configura LARAVEL_API_URL para conectar con tu backend
-
-const USE_MOCK = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_USE_MOCK === 'true') // Cambiar a false cuando conectes con Laravel
-
-// Base URL del backend Laravel
-// Si se provee NEXT_PUBLIC_API_BASE_URL, lo usamos como base y añadimos /api si no está presente
-const getLaravelApiUrl = () => {
-  const envBase = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_BASE_URL : undefined
-  if (typeof envBase === 'string' && envBase.trim() !== '') {
-    const trimmed = envBase.replace(/\/$/, '')
-    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+// API Service - Conectado con backend Laravel
+const API_BASE = (() => {
+  const env = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_BASE_URL : undefined
+  if (typeof env === 'string' && env.trim()) {
+    const base = env.replace(/\/$/, '')
+    return base.endsWith('/api') ? base : `${base}/api`
   }
-  // Sin base en env, mantener comportamiento por defecto
-  if (typeof window !== "undefined" && !USE_MOCK) {
-    const origin = window.location.origin
-    return origin.includes("localhost")
-      ? "http://localhost:8000/api"
-      : origin + "/api"
-  }
-  return "http://localhost:8000/api"
+  return 'http://localhost:8000/api'
+})()
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface Role {
+  id: number
+  nombre: string
 }
 
-const LARAVEL_API_URL = getLaravelApiUrl()
+export interface Wallet {
+  id: number
+  user_id: number
+  saldo: number
+}
 
-// Types
 export interface User {
   id: number
   name: string
   email: string
+  /** Mapped from wallet.saldo on login/register/getUser */
   balance: number
-  avatar?: string
-  phone?: string
   created_at: string
+  roles?: Role[]
+  wallet?: Wallet
+}
+
+export interface Transaccion {
+  id: number
+  wallet_id: number
+  /** 'deposit' = recarga/crédito, 'withdraw' = compra/débito */
+  tipo: 'deposit' | 'withdraw'
+  monto: number
+  saldo_anterior: number
+  saldo_nuevo: number
+  /** Valores en mayúsculas tal como los define la BD */
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
+  descripcion: string
+  created_at: string
+  updated_at: string
+}
+
+export interface RecargasResponse {
+  saldo_actual: number
+  wallet_id: number
+  transacciones: Transaccion[]
+}
+
+export interface StreamingService {
+  id: number
+  name: string
+  slug: string
+  logo_url: string | null
+  primary_color: string | null
+  cantidad_cuentas: number
+  is_active: boolean
+}
+
+export interface OfertaServicioPivot {
+  numero_perfiles: number
+  duracion_dias: number
+  is_active: boolean
+}
+
+export interface StreamingServiceWithPivot extends StreamingService {
+  pivot: OfertaServicioPivot
+}
+
+export interface Oferta {
+  id: number
+  garantia_dias: number
+  precio: number
+  cuenta_completa: boolean
+  is_active: boolean
+  stock: number
+  servicios: StreamingServiceWithPivot[]
+}
+
+export interface Compra {
+  id: number
+  user_id: number
+  oferta_id: number
+  transaccion_id: number
+  precio_compra: number
+  estado: 'pendiente' | 'aprobada' | 'rechazada'
+  nota: string | null
+  created_at: string
+  updated_at: string
+  oferta?: Oferta
+  transaccion?: Transaccion
+}
+
+export interface WalletWithUser extends Wallet {
+  user: Pick<User, 'id' | 'name' | 'email' | 'created_at'>
+}
+
+export interface AdminTransaccion extends Transaccion {
+  wallet: WalletWithUser
+  compra?: Compra
 }
 
 export interface AuthResponse {
+  ok: boolean
+  message: string
   user: User
   token: string
 }
 
-export interface Transaction {
+// ─── Descuento ────────────────────────────────────────────────────────────────
+
+export interface DescuentoRole {
   id: number
-  type: "compra" | "recarga" | "reembolso"
-  description: string
-  amount: number
-  date: string
-  status: "completado" | "pendiente" | "cancelado"
+  nombre: string
+  pivot: {
+    valor_descuento: number
+    tipo_descuento: 'porcentaje' | 'fijo'
+    is_active: boolean
+  }
 }
 
+export interface Descuento {
+  id: number
+  codigo: string | null
+  nombre: string
+  descripcion: string | null
+  fecha_inicio: string
+  fecha_fin: string | null
+  es_recurrente: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  roles?: DescuentoRole[]
+}
+
+// ─── Deprecated types kept for UI compatibility ───────────────────────────────
+/** @deprecated No existe en el backend. Las compras no incluyen credenciales. */
 export interface Screen {
   id: number
   platform: string
@@ -56,422 +149,345 @@ export interface Screen {
   profile: string
   pin?: string
   expiry: string
-  status: "activo" | "expirado" | "pendiente"
+  status: 'activo' | 'expirado' | 'pendiente'
 }
 
-export interface Promotion {
-  id: number
-  title: string
-  description: string
-  discount: number
-  image: string
-  endDate: string
-}
+// ─── Storage helpers ──────────────────────────────────────────────────────────
 
-export interface Release {
-  id: number
-  title: string
-  type: "pelicula" | "serie"
-  platform: string
-  image: string
-  rating: number
-  year: number
-  description: string
-}
-
-// Mock Data
-const mockUser: User = {
-  id: 1,
-  name: "Juan Pérez",
-  email: "juan@email.com",
-  balance: 150000, // Saldo en pesos colombianos
-  phone: "+1234567890",
-  created_at: "2024-01-15",
-}
-
-const mockTransactions: Transaction[] = [
-  { id: 1, type: "compra", description: "Netflix Premium - 1 Pantalla", amount: -25000, date: "2024-01-20", status: "completado" },
-  { id: 2, type: "recarga", description: "Recarga de saldo", amount: 100000, date: "2024-01-18", status: "completado" },
-  { id: 3, type: "compra", description: "Disney+ - 1 Pantalla", amount: -20000, date: "2024-01-15", status: "completado" },
-  { id: 4, type: "recarga", description: "Recarga de saldo", amount: 150000, date: "2024-01-10", status: "completado" },
-  { id: 5, type: "compra", description: "HBO Max - 1 Pantalla", amount: -22000, date: "2024-01-05", status: "completado" },
-]
-
-const mockScreens: Screen[] = [
-  { id: 1, platform: "Netflix", email: "cuenta1@stream.com", password: "pass123", profile: "Perfil 1", pin: "1234", expiry: "2024-02-20", status: "activo" },
-  { id: 2, platform: "Disney+", email: "cuenta2@stream.com", password: "disney456", profile: "Perfil 2", expiry: "2024-02-15", status: "activo" },
-  { id: 3, platform: "HBO Max", email: "cuenta3@stream.com", password: "hbo789", profile: "Perfil 1", expiry: "2024-01-25", status: "expirado" },
-]
-
-// Storage helper
 const getToken = (): string | null => {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem("auth_token")
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem('auth_token')
 }
 
-const setToken = (token: string) => {
-  localStorage.setItem("auth_token", token)
-}
+const setToken = (token: string) => localStorage.setItem('auth_token', token)
 
 const removeToken = () => {
-  localStorage.removeItem("auth_token")
-  localStorage.removeItem("user")
+  localStorage.removeItem('auth_token')
+  localStorage.removeItem('user')
 }
 
-// API Headers
-const getHeaders = (includeAuth = true): HeadersInit => {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
+// ─── HTTP helpers ─────────────────────────────────────────────────────────────
+
+function headers(auth = true): HeadersInit {
+  const h: HeadersInit = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
   }
-  
-  if (includeAuth) {
+  if (auth) {
     const token = getToken()
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`
-    }
+    if (token) h['Authorization'] = `Bearer ${token}`
   }
-  
-  return headers
+  return h
 }
 
-// API Functions
+function mapUserBalance(raw: User & { wallet?: Wallet }): User {
+  const saldo = raw.wallet?.saldo ?? 0
+  return { ...raw, balance: Number(saldo) }
+}
+
+async function handleResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+    throw new Error(err.message || err.error || `HTTP ${res.status}`)
+  }
+  return res.json() as Promise<T>
+}
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+
 export const api = {
-  // Auth
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
   async login(email: string, password: string): Promise<AuthResponse> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 1000))
-      const token = "mock_token_" + Date.now()
-      setToken(token)
-      localStorage.setItem("user", JSON.stringify(mockUser))
-      return { user: mockUser, token }
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/ingresar`, {
-      method: "POST",
-      headers: getHeaders(false),
+    const res = await fetch(`${API_BASE}/ingresar`, {
+      method: 'POST',
+      headers: headers(false),
       body: JSON.stringify({ email, password }),
     })
-    
-    if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.message || "Error al iniciar sesión")
-    }
-    
-    const data = await res.json()
-    // Map wallet balance to top-level balance if backend returns wallet.saldo
-    if (data?.user && data.user.wallet && typeof data.user.wallet.saldo !== 'undefined') {
-      data.user.balance = Number(data.user.wallet.saldo)
-    }
+    const data = await handleResponse<AuthResponse>(res)
+    const user = mapUserBalance(data.user)
     setToken(data.token)
-    localStorage.setItem("user", JSON.stringify(data.user))
-    return data
+    localStorage.setItem('user', JSON.stringify(user))
+    return { ...data, user }
   },
-  
-  async register(name: string, email: string, password: string, passwordConfirmation: string): Promise<AuthResponse> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 1000))
-      const newUser = { ...mockUser, name, email, id: Date.now() }
-      const token = "mock_token_" + Date.now()
-      setToken(token)
-      localStorage.setItem("user", JSON.stringify(newUser))
-      return { user: newUser, token }
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/registrar`, {
-      method: "POST",
-      headers: getHeaders(false),
+
+  async register(
+    name: string,
+    email: string,
+    password: string,
+    passwordConfirmation: string
+  ): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/registrar`, {
+      method: 'POST',
+      headers: headers(false),
       body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
     })
-    
-    if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.message || "Error al registrarse")
-    }
-    
-    const data = await res.json()
-    // Map wallet balance to top-level balance if backend returns wallet.saldo
-    if (data?.user && data.user.wallet && typeof data.user.wallet.saldo !== 'undefined') {
-      data.user.balance = Number(data.user.wallet.saldo)
-    }
+    const data = await handleResponse<AuthResponse>(res)
+    const user = mapUserBalance(data.user)
     setToken(data.token)
-    localStorage.setItem("user", JSON.stringify(data.user))
-    return data
+    localStorage.setItem('user', JSON.stringify(user))
+    return { ...data, user }
   },
-  
+
   async logout(): Promise<void> {
-    if (!USE_MOCK) {
-      try {
-        await fetch(`${LARAVEL_API_URL}/logout`, {
-          method: "POST",
-          headers: getHeaders(),
-        })
-      } catch {
-        // Ignore logout errors
-      }
+    try {
+      await fetch(`${API_BASE}/logout`, { method: 'POST', headers: headers() })
+    } catch {
+      // ignore network errors on logout
     }
     removeToken()
   },
-  
+
   async getUser(): Promise<User | null> {
-    if (USE_MOCK) {
-      const stored = localStorage.getItem("user")
-      return stored ? JSON.parse(stored) : null
-    }
-    
-    const token = getToken()
-    if (!token) return null
-    
+    if (!getToken()) return null
     try {
-      const res = await fetch(`${LARAVEL_API_URL}/user`, {
-        headers: getHeaders(),
-      })
-      
-      if (!res.ok) {
-        removeToken()
-        return null
-      }
-      const userData = await res.json()
-      // Map wallet balance to top-level balance if backend returns wallet.saldo
-      if (userData?.wallet && userData.wallet.saldo !== undefined) {
-        userData.balance = Number(userData.wallet.saldo)
-      }
-      return userData
+      const res = await fetch(`${API_BASE}/user`, { headers: headers() })
+      if (!res.ok) { removeToken(); return null }
+      const raw = await res.json()
+      return mapUserBalance(raw)
     } catch {
       return null
     }
   },
-  
-  // Balance
-  async getBalance(): Promise<number> {
-    if (USE_MOCK) {
-      const stored = localStorage.getItem("user")
-      const user = stored ? JSON.parse(stored) : null
-      return user?.balance || 0
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/user/balance`, {
-      headers: getHeaders(),
-    })
-    
-    if (!res.ok) throw new Error("Error al obtener saldo")
-    const data = await res.json()
-    return data.balance
-  },
-  
-  async rechargeBalance(amount: number, method: string): Promise<{ success: boolean; newBalance: number }> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 1500))
-      const stored = localStorage.getItem("user")
-      const user = stored ? JSON.parse(stored) : mockUser
-      user.balance += amount
-      localStorage.setItem("user", JSON.stringify(user))
-      return { success: true, newBalance: user.balance }
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/user/recharge`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({ amount, method }),
-    })
-    
-    if (!res.ok) throw new Error("Error al recargar saldo")
-    return res.json()
-  },
-  
-  // Transactions
-  async getTransactions(filters?: { type?: string; dateFrom?: string; dateTo?: string }): Promise<Transaction[]> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 500))
-      // Get from localStorage first, fallback to mock
-      const stored = localStorage.getItem("user_transactions")
-      let result: Transaction[] = stored ? JSON.parse(stored) : [...mockTransactions]
-      if (filters?.type && filters.type !== "todos") {
-        result = result.filter(t => t.type === filters.type)
-      }
-      return result
-    }
-    
-    const params = new URLSearchParams()
-    if (filters?.type) params.append("type", filters.type)
-    if (filters?.dateFrom) params.append("date_from", filters.dateFrom)
-    if (filters?.dateTo) params.append("date_to", filters.dateTo)
-    
-    const res = await fetch(`${LARAVEL_API_URL}/transactions?${params}`, {
-      headers: getHeaders(),
-    })
-    
-    if (!res.ok) throw new Error("Error al obtener transacciones")
-    return res.json()
-  },
-  
-  // Screens
-  async getMyScreens(): Promise<Screen[]> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 500))
-      // Get from localStorage first, fallback to mock
-      const stored = localStorage.getItem("user_screens")
-      return stored ? JSON.parse(stored) : [...mockScreens]
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/screens/my`, {
-      headers: getHeaders(),
-    })
-    
-    if (!res.ok) throw new Error("Error al obtener pantallas")
-    return res.json()
-  },
-  
-  // Update Profile
-  async updateProfile(data: Partial<User>): Promise<User> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 800))
-      const stored = localStorage.getItem("user")
-      const user = stored ? JSON.parse(stored) : mockUser
-      const updated = { ...user, ...data }
-      localStorage.setItem("user", JSON.stringify(updated))
-      return updated
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/user/profile`, {
-      method: "PUT",
-      headers: getHeaders(),
-      body: JSON.stringify(data),
-    })
-    
-    if (!res.ok) throw new Error("Error al actualizar perfil")
-    return res.json()
-  },
-  
-  // Check if authenticated
+
   isAuthenticated(): boolean {
     return !!getToken()
   },
 
-  // Purchase screen
-  async purchaseScreen(product: {
-    id: string
-    name: string
-    price: number
-    category: string
-    duration: string
-  }): Promise<{ success: boolean; screen: Screen; newBalance: number; transaction: Transaction }> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 1500))
-      
-      // Get current user
-      const stored = localStorage.getItem("user")
-      console.log("[v0] purchaseScreen - stored user:", stored)
-      if (!stored) throw new Error("Usuario no autenticado")
-      const user = JSON.parse(stored)
-      
-      console.log("[v0] purchaseScreen - user balance:", user.balance, "product price:", product.price)
-      
-      // Check balance
-      if (user.balance < product.price) {
-        throw new Error("Saldo insuficiente")
-      }
-      
-      // Deduct balance
-      user.balance -= product.price
-      localStorage.setItem("user", JSON.stringify(user))
-      console.log("[v0] purchaseScreen - new balance saved:", user.balance)
-      
-      // Create new screen
-      const newScreen: Screen = {
-        id: Date.now(),
-        platform: product.category,
-        email: `${product.category.toLowerCase().replace(/[+\s]/g, "")}${Date.now()}@streamplus.com`,
-        password: `SP${Math.random().toString(36).substring(2, 10)}`,
-        profile: "Perfil 1",
-        pin: Math.floor(1000 + Math.random() * 9000).toString(),
-        expiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-        status: "activo",
-      }
-      
-      // Save screen to localStorage
-      const screensStored = localStorage.getItem("user_screens")
-      const screens: Screen[] = screensStored ? JSON.parse(screensStored) : []
-      screens.unshift(newScreen)
-      localStorage.setItem("user_screens", JSON.stringify(screens))
-      
-      // Create transaction
-      const newTransaction: Transaction = {
-        id: Date.now(),
-        type: "compra",
-        description: `${product.name} - ${product.duration}`,
-        amount: -product.price,
-        date: new Date().toISOString(),
-        status: "completado",
-      }
-      
-      // Save transaction
-      const txStored = localStorage.getItem("user_transactions")
-      const transactions: Transaction[] = txStored ? JSON.parse(txStored) : []
-      transactions.unshift(newTransaction)
-      localStorage.setItem("user_transactions", JSON.stringify(transactions))
-      
-      console.log("[v0] purchaseScreen - purchase complete, screens saved:", screens.length, "transactions:", transactions.length)
-      
-      return {
-        success: true,
-        screen: newScreen,
-        newBalance: user.balance,
-        transaction: newTransaction,
-      }
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/screens/purchase`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify(product),
+  // ── Recargas ──────────────────────────────────────────────────────────────
+
+  /** GET /api/recargas → {saldo_actual, wallet_id, transacciones[]} */
+  async getRecargas(): Promise<RecargasResponse> {
+    const res = await fetch(`${API_BASE}/recargas`, { headers: headers() })
+    return handleResponse<RecargasResponse>(res)
+  },
+
+  /** POST /api/recargas → crea solicitud de recarga (estado: PENDIENTE) */
+  async createRecarga(
+    monto: number,
+    metodo_pago?: string,
+    referencia_pago?: string
+  ): Promise<{ ok: boolean; message: string; transaccion: Transaccion }> {
+    const res = await fetch(`${API_BASE}/recargas`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ monto, metodo_pago, referencia_pago }),
     })
-    
+    return handleResponse(res)
+  },
+
+  // ── Compras ───────────────────────────────────────────────────────────────
+
+  /** GET /api/compra → compras del usuario autenticado */
+  async getCompras(): Promise<Compra[]> {
+    const res = await fetch(`${API_BASE}/compra`, { headers: headers() })
+    return handleResponse<Compra[]>(res)
+  },
+
+  /** POST /api/compra → {message, compra} */
+  async createCompra(
+    oferta_id: number,
+    nota?: string
+  ): Promise<{ message: string; compra: Compra }> {
+    const res = await fetch(`${API_BASE}/compra`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ oferta_id, nota }),
+    })
+    return handleResponse(res)
+  },
+
+  // ── Ofertas ───────────────────────────────────────────────────────────────
+
+  /** GET /api/oferta → lista de ofertas con servicios de streaming */
+  async getOfertas(): Promise<Oferta[]> {
+    const res = await fetch(`${API_BASE}/oferta`, { headers: headers() })
+    return handleResponse<Oferta[]>(res)
+  },
+
+  // ── Streaming Services ────────────────────────────────────────────────────
+
+  /** GET /api/streaming-service */
+  async getStreamingServices(): Promise<StreamingService[]> {
+    const res = await fetch(`${API_BASE}/streaming-service`, { headers: headers() })
+    return handleResponse<StreamingService[]>(res)
+  },
+
+  // ── Admin: Transacciones ──────────────────────────────────────────────────
+
+  /** GET /api/admin/transaccion?estado=pendiente|aprobada|rechazada */
+  async getAdminTransacciones(estado?: string): Promise<AdminTransaccion[]> {
+    const url = estado
+      ? `${API_BASE}/admin/transaccion?estado=${estado}`
+      : `${API_BASE}/admin/transaccion`
+    const res = await fetch(url, { headers: headers() })
+    return handleResponse<AdminTransaccion[]>(res)
+  },
+
+  /** PUT /api/admin/transaccion/{id} → aprobar o rechazar */
+  async updateAdminTransaccion(
+    id: number,
+    estado: 'APROBADO' | 'RECHAZADO',
+    comentario_admin?: string
+  ): Promise<{ message: string; transaccion: Transaccion; saldo_actual_usuario: number }> {
+    const res = await fetch(`${API_BASE}/admin/transaccion/${id}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ estado, comentario_admin }),
+    })
+    return handleResponse(res)
+  },
+
+  // ── Admin: Wallets ────────────────────────────────────────────────────────
+
+  /** GET /api/wallet → lista wallets con info de usuario (requiere gestionar_acceso) */
+  async getWallets(): Promise<WalletWithUser[]> {
+    const res = await fetch(`${API_BASE}/wallet`, { headers: headers() })
+    return handleResponse<WalletWithUser[]>(res)
+  },
+
+  /** PUT /api/wallet/{id} → ajuste manual de saldo (requiere gestionar_acceso) */
+  async adjustWalletBalance(
+    walletId: number,
+    monto: number,
+    motivo: string
+  ): Promise<{ message: string; wallet: WalletWithUser }> {
+    const res = await fetch(`${API_BASE}/wallet/${walletId}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify({ monto, motivo }),
+    })
+    return handleResponse(res)
+  },
+
+  // ── Descuentos ────────────────────────────────────────────────────────────────
+
+  async getDescuentos(): Promise<Descuento[]> {
+    const res = await fetch(`${API_BASE}/descuento`, { headers: headers() })
+    return handleResponse<Descuento[]>(res)
+  },
+
+  async deleteDescuento(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/descuento/${id}`, { method: 'DELETE', headers: headers() })
     if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.message || "Error al realizar la compra")
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+      throw new Error(err.message || `HTTP ${res.status}`)
     }
-    
-    return res.json()
   },
 
-  // Admin: Get all users
+  // ── Streaming Services CRUD ───────────────────────────────────────────────────
+
+  async createStreamingService(data: Partial<StreamingService>): Promise<StreamingService> {
+    const res = await fetch(`${API_BASE}/streaming-service`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify(data),
+    })
+    return handleResponse<StreamingService>(res)
+  },
+
+  async updateStreamingService(id: number, data: Partial<StreamingService>): Promise<StreamingService> {
+    const res = await fetch(`${API_BASE}/streaming-service/${id}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify(data),
+    })
+    return handleResponse<StreamingService>(res)
+  },
+
+  async deleteStreamingService(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/streaming-service/${id}`, { method: 'DELETE', headers: headers() })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+      throw new Error(err.message || `HTTP ${res.status}`)
+    }
+  },
+
+  // ── Ofertas CRUD ──────────────────────────────────────────────────────────────
+
+  async deleteOferta(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/oferta/${id}`, { method: 'DELETE', headers: headers() })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+      throw new Error(err.message || `HTTP ${res.status}`)
+    }
+  },
+
+  async updateOferta(id: number, data: Partial<Oferta>): Promise<Oferta> {
+    const res = await fetch(`${API_BASE}/oferta/${id}`, {
+      method: 'PUT',
+      headers: headers(),
+      body: JSON.stringify(data),
+    })
+    return handleResponse<Oferta>(res)
+  },
+
+  // ─── DEPRECATED ─────────────────────────────────────────────────────────────
+  // Los siguientes métodos no tienen endpoint en el backend.
+  // Se mantienen para compatibilidad de UI pero no realizan llamadas reales.
+
+  /** @deprecated Usa getUser() para obtener el saldo desde wallet.saldo */
+  async getBalance(): Promise<number> {
+    console.warn('[DEPRECATED] api.getBalance() - usa api.getUser() y lee user.balance')
+    const user = await this.getUser()
+    return user?.balance ?? 0
+  },
+
+  /** @deprecated Usa createRecarga(monto) en su lugar */
+  async rechargeBalance(amount: number, _method: string): Promise<{ success: boolean; newBalance: number }> {
+    console.warn('[DEPRECATED] api.rechargeBalance() - usa api.createRecarga(monto)')
+    await this.createRecarga(amount)
+    return { success: true, newBalance: 0 }
+  },
+
+  /** @deprecated Usa getRecargas() en su lugar */
+  async getTransactions(): Promise<Transaccion[]> {
+    console.warn('[DEPRECATED] api.getTransactions() - usa api.getRecargas()')
+    const data = await this.getRecargas()
+    return data.transacciones
+  },
+
+  /** @deprecated Usa getCompras() en su lugar. El backend no devuelve credenciales de pantallas. */
+  async getMyScreens(): Promise<Screen[]> {
+    console.warn('[DEPRECATED] api.getMyScreens() - usa api.getCompras(). El backend no devuelve credenciales.')
+    return []
+  },
+
+  /** @deprecated No existe endpoint de actualización de perfil en el backend */
+  async updateProfile(_data: Partial<User>): Promise<User> {
+    console.warn('[DEPRECATED] api.updateProfile() - no existe endpoint en el backend')
+    const user = await this.getUser()
+    if (!user) throw new Error('Usuario no autenticado')
+    return user
+  },
+
+  /**
+   * @deprecated Usa createCompra(oferta_id) en su lugar.
+   * El backend no gestiona credenciales de pantallas (email/password/pin).
+   */
+  async purchaseScreen(_product: {
+    id: string; name: string; price: number; category: string; duration: string
+  }): Promise<{ success: boolean; screen: Screen; newBalance: number; transaction: Transaccion }> {
+    console.warn('[DEPRECATED] api.purchaseScreen() - usa api.createCompra(oferta_id)')
+    throw new Error('Función deprecada. Usa api.createCompra(oferta_id) con el ID de oferta del backend.')
+  },
+
+  /** @deprecated Usa getWallets() en su lugar (retorna wallets con info de usuario) */
   async getUsers(): Promise<User[]> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 500))
-      return [
-        { id: 1, name: "Juan Pérez", email: "juan@email.com", balance: 150000, created_at: "2024-01-15" },
-        { id: 2, name: "María García", email: "maria@email.com", balance: 75500, created_at: "2024-01-18" },
-        { id: 3, name: "Carlos López", email: "carlos@email.com", balance: 200000, created_at: "2024-01-20" },
-        { id: 4, name: "Ana Rodríguez", email: "ana@email.com", balance: 50000, created_at: "2024-01-22" },
-        { id: 5, name: "Pedro Martínez", email: "pedro@email.com", balance: 0, created_at: "2024-01-25" },
-      ]
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/admin/users`, {
-      headers: getHeaders(),
-    })
-    
-    if (!res.ok) throw new Error("Error al obtener usuarios")
-    return res.json()
+    console.warn('[DEPRECATED] api.getUsers() - usa api.getWallets()')
+    const wallets = await this.getWallets()
+    return wallets.map(w => ({ ...w.user, balance: w.saldo }))
   },
 
-  // Admin: Add balance to user
-  async addUserBalance(userId: number, amount: number, description?: string): Promise<{ success: boolean; newBalance: number }> {
-    if (USE_MOCK) {
-      await new Promise(r => setTimeout(r, 800))
-      // Mock success
-      return { success: true, newBalance: amount }
-    }
-    
-    const res = await fetch(`${LARAVEL_API_URL}/admin/users/${userId}/balance`, {
-      method: "POST",
-      headers: getHeaders(),
-      body: JSON.stringify({ amount, description }),
-    })
-    
-    if (!res.ok) throw new Error("Error al agregar saldo")
-    return res.json()
+  /** @deprecated Usa adjustWalletBalance(walletId, monto, motivo) en su lugar */
+  async addUserBalance(
+    _userId: number,
+    amount: number,
+    description?: string
+  ): Promise<{ success: boolean; newBalance: number }> {
+    console.warn('[DEPRECATED] api.addUserBalance() - usa api.adjustWalletBalance(walletId, monto, motivo)')
+    return { success: false, newBalance: 0 }
   },
 }
 

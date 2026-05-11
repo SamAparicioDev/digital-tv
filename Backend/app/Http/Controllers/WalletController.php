@@ -13,10 +13,6 @@ class WalletController extends Controller
 {
     public function index()
     {
-        if (!Auth::user()->hasPrivilege('gestionar_usuarios')) {
-             return response()->json(['message' => 'No autorizado.'], 403);
-        }
-
         $wallets = Wallet::with('user')->get();
         return response()->json($wallets, 200);
     }
@@ -35,14 +31,13 @@ class WalletController extends Controller
 
         if ($request->saldo > 0) {
             Transaccion::create([
-                'wallet_id' => $wallet->id,
-                'tipo' => 'ingreso',
-                'monto' => $request->saldo,
+                'wallet_id'      => $wallet->id,
+                'tipo'           => 'deposit',
+                'monto'          => $request->saldo,
                 'saldo_anterior' => 0,
-                'saldo_nuevo' => $request->saldo,
-                'estado' => 'aprobada',
-                'descripcion' => 'Saldo inicial por creación manual',
-                'referencia' => 'INIT-ADMIN-' . Auth::id()
+                'saldo_nuevo'    => $request->saldo,
+                'estado'         => 'APROBADO',
+                'descripcion'    => 'Saldo inicial por creación manual - Admin #' . Auth::id(),
             ]);
         }
 
@@ -54,23 +49,13 @@ class WalletController extends Controller
 
     public function show($id)
     {
-        $user = Auth::user();
         $wallet = Wallet::with('user')->findOrFail($id);
-
-        if ($wallet->user_id !== $user->id && !$user->hasPrivilege('gestionar_usuarios')) {
-            return response()->json(['message' => 'No autorizado'], 403);
-        }
-
         return response()->json($wallet, 200);
     }
 
 
     public function update(Request $request, $id)
     {
-        if (!Auth::user()->hasPrivilege('gestionar_usuarios')) {
-            return response()->json(['message' => 'No autorizado.'], 403);
-        }
-
         $request->validate([
             'monto' => 'required|numeric',
             'motivo' => 'required|string|max:255'
@@ -92,17 +77,16 @@ class WalletController extends Controller
             $wallet->saldo = $saldoNuevo;
             $wallet->save();
 
-            $tipo = $monto >= 0 ? 'ingreso' : 'egreso';
+            $tipo = $monto >= 0 ? 'deposit' : 'withdraw';
 
             Transaccion::create([
-                'wallet_id' => $wallet->id,
-                'tipo' => $tipo,
-                'monto' => abs($monto),
+                'wallet_id'      => $wallet->id,
+                'tipo'           => $tipo,
+                'monto'          => abs($monto),
                 'saldo_anterior' => $saldoAnterior,
-                'saldo_nuevo' => $saldoNuevo,
-                'estado' => 'aprobada',
-                'descripcion' => 'Ajuste Manual Admin: ' . $request->motivo,
-                'referencia' => 'ADJ-' . time() . '-' . Auth::id()
+                'saldo_nuevo'    => $saldoNuevo,
+                'estado'         => 'APROBADO',
+                'descripcion'    => 'Ajuste Manual Admin: ' . $request->motivo,
             ]);
 
             DB::commit();

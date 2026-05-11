@@ -5,17 +5,20 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { 
-  Play, 
-  LayoutDashboard, 
-  Wallet, 
-  History, 
-  Settings, 
-  LogOut, 
-  Menu, 
+import { useAuth } from "@/contexts/auth-context"
+import {
+  Play,
+  LayoutDashboard,
+  Wallet,
+  History,
+  Settings,
+  LogOut,
+  Menu,
   X,
   Bell,
-  User
+  User,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react"
 
 const navItems = [
@@ -28,34 +31,33 @@ const navItems = [
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const { user, isLoading, isAuthenticated, isAdmin, logout } = useAuth()
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null)
 
+  // Guard: solo usuarios autenticados
   useEffect(() => {
-    const stored = localStorage.getItem("user")
-    if (stored) {
-      setUser(JSON.parse(stored))
-    } else {
-      router.push("/")
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/')
     }
-  }, [router])
+  }, [isLoading, isAuthenticated, router])
 
-  const handleLogout = () => {
-    localStorage.removeItem("user")
-    router.push("/")
+  const handleLogout = async () => {
+    await logout()
+    router.push('/')
   }
 
-  if (!user) {
+  if (isLoading || !isAuthenticated || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Overlay */}
       {isSidebarOpen && (
         <div
           className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
@@ -105,6 +107,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
             )
           })}
+
+          {/* Acceso rápido al admin si el usuario también tiene ese rol */}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setIsSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors mt-4 border border-border/40"
+            >
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              <span className="font-medium text-sm">Panel Admin</span>
+            </Link>
+          )}
         </nav>
 
         {/* User Section */}
@@ -120,7 +134,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </div>
           <Button
             variant="ghost"
-            className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
+            className="w-full justify-start text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
             onClick={handleLogout}
           >
             <LogOut className="w-5 h-5 mr-3" />
@@ -149,20 +163,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <Bell className="w-5 h-5" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
             </Button>
+            {/* Saldo real desde el contexto */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border">
               <Wallet className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">$150.00</span>
+              <span className="text-sm font-medium">
+                ${(user.balance ?? 0).toLocaleString('es-CO')}
+              </span>
             </div>
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-6">
-          {children}
-        </main>
+        <main className="flex-1 p-4 lg:p-6">{children}</main>
       </div>
 
-      {/* Mobile Menu Close Button */}
       {isSidebarOpen && (
         <Button
           variant="ghost"

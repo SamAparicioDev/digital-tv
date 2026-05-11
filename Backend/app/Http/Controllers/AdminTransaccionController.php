@@ -24,14 +24,14 @@ class AdminTransaccionController extends Controller
     public function update(Request $request, Transaccion $transaccion)
     {
         $request->validate([
-            'estado' => ['required', Rule::in(['aprobada', 'rechazada', 'pendiente', 'APROBADO', 'RECHAZADO', 'PENDIENTE'])],
-            'comentario_admin' => 'nullable|string|max:255'
+            'estado'           => ['required', Rule::in(['APROBADO', 'RECHAZADO', 'PENDIENTE'])],
+            'comentario_admin' => 'nullable|string|max:255',
         ]);
 
-        $nuevoEstado = strtolower($request->estado);
-        $estadoActual = strtolower($transaccion->estado);
+        $nuevoEstado  = strtoupper($request->estado);
+        $estadoActual = strtoupper($transaccion->estado);
 
-        if ($estadoActual !== 'pendiente' && $nuevoEstado !== $estadoActual) {
+        if ($estadoActual !== 'PENDIENTE' && $nuevoEstado !== $estadoActual) {
             return response()->json([
                 'message' => 'Esta transacción ya fue procesada anteriormente.'
             ], 409);
@@ -40,30 +40,27 @@ class AdminTransaccionController extends Controller
         DB::beginTransaction();
 
         try {
-
             $wallet = $transaccion->wallet()->lockForUpdate()->first();
 
             $saldoAlMomentoDeOperar = $wallet->saldo;
 
-            $tipoTransaccion = strtolower($transaccion->tipo); // 'ingreso', 'egreso' o 'retiro'
+            // 'deposit' = ingreso de saldo, 'withdraw' = egreso por compra
+            $tipoTransaccion = $transaccion->tipo;
             $compra = Compra::where('transaccion_id', $transaccion->id)->first();
 
-            if ($tipoTransaccion === 'ingreso') {
-                if ($nuevoEstado === 'aprobada') {
+            if ($tipoTransaccion === 'deposit') {
+                if ($nuevoEstado === 'APROBADO') {
                     $wallet->saldo += $transaccion->monto;
                     $wallet->save();
                     $transaccion->saldo_anterior = $saldoAlMomentoDeOperar;
-                    $transaccion->saldo_nuevo    = $wallet->saldo; // El nuevo saldo sumado
+                    $transaccion->saldo_nuevo    = $wallet->saldo;
                 }
-            }
-            else {
-
-                if ($nuevoEstado === 'aprobada') {
+            } else {
+                // withdraw
+                if ($nuevoEstado === 'APROBADO') {
                     if ($compra) $compra->update(['estado' => 'aprobada']);
-
-
-                }
-                elseif ($nuevoEstado === 'rechazada') {
+                } elseif ($nuevoEstado === 'RECHAZADO') {
+                    // Devolver el saldo al usuario
                     $wallet->saldo += $transaccion->monto;
                     $wallet->save();
 
@@ -76,24 +73,24 @@ class AdminTransaccionController extends Controller
                 }
             }
 
-
-            $transaccion->estado = $nuevoEstado;
-            $transaccion->descripcion = $transaccion->descripcion . ($request->comentario_admin ? " | Nota Admin: " . $request->comentario_admin : "");
-            $transaccion->save(); 
+            $transaccion->estado      = $nuevoEstado;
+            $transaccion->descripcion = $transaccion->descripcion
+                . ($request->comentario_admin ? ' | Nota Admin: ' . $request->comentario_admin : '');
+            $transaccion->save();
 
             DB::commit();
 
             return response()->json([
-                'message' => "Transacción actualizada a {$nuevoEstado} correctamente.",
-                'transaccion' => $transaccion->fresh(),
-                'saldo_actual_usuario' => $wallet->saldo
+                'message'             => "Transacción actualizada a {$nuevoEstado} correctamente.",
+                'transaccion'         => $transaccion->fresh(),
+                'saldo_actual_usuario' => $wallet->saldo,
             ], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'message' => 'Error al actualizar la transacción.',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }

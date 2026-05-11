@@ -1,123 +1,79 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { FadeIn } from "@/components/animations/motion"
-import { 
-  History, 
-  Search, 
+import {
+  History,
+  Search,
   Filter,
   ShoppingBag,
   ArrowDownRight,
   Calendar,
-  Download,
-  Eye
+  Loader2,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useSearchParams, Suspense } from "next/navigation"
+import { api, type Transaccion } from "@/lib/api"
 import Loading from "./loading"
 
-const transactions = [
-  {
-    id: 1,
-    type: "compra",
-    title: "Netflix Premium",
-    description: "Cuenta completa 4K - 30 días",
-    amount: -11.99,
-    date: "18 Ene 2024",
-    time: "14:32",
-    status: "completado",
-    orderId: "ORD-2024-001234",
-  },
-  {
-    id: 2,
-    type: "recarga",
-    title: "Recarga de saldo",
-    description: "Tarjeta de crédito ****4532",
-    amount: 50.00,
-    date: "17 Ene 2024",
-    time: "09:15",
-    status: "completado",
-    orderId: "REC-2024-005678",
-  },
-  {
-    id: 3,
-    type: "compra",
-    title: "Disney+ Individual",
-    description: "Pantalla individual - 30 días",
-    amount: -3.99,
-    date: "15 Ene 2024",
-    time: "18:45",
-    status: "completado",
-    orderId: "ORD-2024-001233",
-  },
-  {
-    id: 4,
-    type: "compra",
-    title: "HBO Max Completa",
-    description: "Cuenta completa - 30 días",
-    amount: -8.99,
-    date: "12 Ene 2024",
-    time: "11:20",
-    status: "completado",
-    orderId: "ORD-2024-001232",
-  },
-  {
-    id: 5,
-    type: "recarga",
-    title: "Recarga de saldo",
-    description: "Transferencia bancaria",
-    amount: 100.00,
-    date: "10 Ene 2024",
-    time: "16:08",
-    status: "completado",
-    orderId: "REC-2024-005677",
-  },
-  {
-    id: 6,
-    type: "compra",
-    title: "Spotify Premium",
-    description: "Cuenta individual - 30 días",
-    amount: -6.49,
-    date: "08 Ene 2024",
-    time: "20:33",
-    status: "completado",
-    orderId: "ORD-2024-001231",
-  },
-  {
-    id: 7,
-    type: "compra",
-    title: "Amazon Prime Video",
-    description: "Cuenta completa - 30 días",
-    amount: -10.39,
-    date: "05 Ene 2024",
-    time: "13:45",
-    status: "reembolsado",
-    orderId: "ORD-2024-001230",
-  },
-]
+// Mapea el tipo del backend al tipo de display
+function displayType(t: Transaccion): 'recarga' | 'compra' {
+  return t.tipo === 'deposit' ? 'recarga' : 'compra'
+}
+
+function displayStatus(estado: Transaccion['estado']): string {
+  if (estado === 'APROBADO') return 'Aprobada'
+  if (estado === 'RECHAZADO') return 'Rechazada'
+  return 'Pendiente'
+}
+
+function statusClass(estado: Transaccion['estado']): string {
+  if (estado === 'APROBADO') return 'text-green-500 border-green-500/30'
+  if (estado === 'RECHAZADO') return 'text-red-500 border-red-500/30'
+  return 'text-yellow-500 border-yellow-500/30'
+}
 
 export default function HistorialPage() {
-  const [filter, setFilter] = useState<"all" | "compra" | "recarga">("all")
-  const [searchQuery, setSearchQuery] = useState("")
-  const searchParams = useSearchParams()
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'recarga' | 'compra'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredTransactions = transactions.filter((t) => {
-    if (filter !== "all" && t.type !== filter) return false
-    if (searchQuery && !t.title.toLowerCase().includes(searchQuery.toLowerCase())) return false
+  const loadData = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const data = await api.getRecargas()
+      setTransacciones(data.transacciones)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando historial')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => { loadData() }, [])
+
+  const filteredTransacciones = transacciones.filter((t) => {
+    const type = displayType(t)
+    if (filter !== 'all' && type !== filter) return false
+    if (searchQuery && !t.descripcion.toLowerCase().includes(searchQuery.toLowerCase()) && !t.referencia?.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
   })
 
-  const totalCompras = transactions
-    .filter((t) => t.type === "compra" && t.status === "completado")
-    .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+  const totalCompras = transacciones
+    .filter((t) => t.tipo === 'withdraw' && t.estado === 'APROBADO')
+    .reduce((sum, t) => sum + t.monto, 0)
 
-  const totalRecargas = transactions
-    .filter((t) => t.type === "recarga")
-    .reduce((sum, t) => sum + t.amount, 0)
+  const totalRecargas = transacciones
+    .filter((t) => t.tipo === 'deposit' && t.estado === 'APROBADO')
+    .reduce((sum, t) => sum + t.monto, 0)
 
   return (
     <Suspense fallback={<Loading />}>
@@ -128,13 +84,16 @@ export default function HistorialPage() {
               <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                 Historial de transacciones
               </h1>
-              <p className="text-muted-foreground">
-                Revisa todas tus compras y recargas
-              </p>
+              <p className="text-muted-foreground">Revisa todas tus recargas y compras</p>
             </div>
-            <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent">
-              <Download className="w-4 h-4 mr-2" />
-              Exportar
+            <Button
+              variant="outline"
+              className="border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent"
+              onClick={loadData}
+              disabled={isLoading}
+            >
+              <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
+              Actualizar
             </Button>
           </div>
         </FadeIn>
@@ -150,13 +109,13 @@ export default function HistorialPage() {
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total transacciones</p>
-                    <p className="text-xl font-bold text-foreground">{transactions.length}</p>
+                    <p className="text-xl font-bold text-foreground">{transacciones.length}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </FadeIn>
-          
+
           <FadeIn delay={0.15}>
             <Card className="bg-card border-border">
               <CardContent className="p-4">
@@ -165,14 +124,16 @@ export default function HistorialPage() {
                     <ShoppingBag className="w-5 h-5 text-red-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total compras</p>
-                    <p className="text-xl font-bold text-foreground">${totalCompras.toFixed(2)}</p>
+                    <p className="text-sm text-muted-foreground">Total compras (aprobadas)</p>
+                    <p className="text-xl font-bold text-foreground">
+                      ${totalCompras.toLocaleString('es-CO')}
+                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </FadeIn>
-          
+
           <FadeIn delay={0.2}>
             <Card className="bg-card border-border">
               <CardContent className="p-4">
@@ -181,8 +142,10 @@ export default function HistorialPage() {
                     <ArrowDownRight className="w-5 h-5 text-green-500" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Total recargas</p>
-                    <p className="text-xl font-bold text-foreground">${totalRecargas.toFixed(2)}</p>
+                    <p className="text-sm text-muted-foreground">Total recargas (aprobadas)</p>
+                    <p className="text-xl font-bold text-foreground">
+                      ${totalRecargas.toLocaleString('es-CO')}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -195,35 +158,32 @@ export default function HistorialPage() {
           <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row gap-4">
-                {/* Search */}
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    placeholder="Buscar transacción..."
+                    placeholder="Buscar por descripción o referencia..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10"
                   />
                 </div>
-                
-                {/* Filter Buttons */}
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-muted-foreground" />
                   {[
-                    { key: "all", label: "Todas" },
-                    { key: "compra", label: "Compras" },
-                    { key: "recarga", label: "Recargas" },
+                    { key: 'all', label: 'Todas' },
+                    { key: 'recarga', label: 'Recargas' },
+                    { key: 'compra', label: 'Compras' },
                   ].map((f) => (
                     <Button
                       key={f.key}
-                      variant={filter === f.key ? "default" : "outline"}
+                      variant={filter === f.key ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFilter(f.key as typeof filter)}
                       className={cn(
-                        "transition-all duration-200",
+                        'transition-all duration-200',
                         filter === f.key
-                          ? "bg-primary text-primary-foreground"
-                          : "hover:border-primary hover:text-primary"
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:border-primary hover:text-primary'
                       )}
                     >
                       {f.label}
@@ -241,70 +201,70 @@ export default function HistorialPage() {
             <CardHeader>
               <CardTitle>Transacciones</CardTitle>
               <CardDescription>
-                Mostrando {filteredTransactions.length} de {transactions.length} transacciones
+                Mostrando {filteredTransacciones.length} de {transacciones.length} transacciones
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {filteredTransactions.map((transaction, index) => (
-                  <div
-                    key={transaction.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border hover:border-primary/30 hover:bg-secondary/30 transition-all duration-200 gap-4"
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <div className="flex items-center gap-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                  <AlertCircle className="w-10 h-10 text-red-500" />
+                  <p>{error}</p>
+                  <Button variant="outline" size="sm" onClick={loadData}>Reintentar</Button>
+                </div>
+              ) : filteredTransacciones.length === 0 ? (
+                <p className="text-center text-muted-foreground py-12">No hay transacciones registradas.</p>
+              ) : (
+                <div className="space-y-3">
+                  {filteredTransacciones.map((t, index) => {
+                    const type = displayType(t)
+                    const isIngreso = t.tipo === 'deposit'
+                    return (
                       <div
-                        className={cn(
-                          "p-3 rounded-lg",
-                          transaction.type === "recarga"
-                            ? "bg-green-500/10"
-                            : "bg-primary/10"
-                        )}
+                        key={t.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-border hover:border-primary/30 hover:bg-secondary/30 transition-all duration-200 gap-4"
+                        style={{ animationDelay: `${index * 50}ms` }}
                       >
-                        {transaction.type === "recarga" ? (
-                          <ArrowDownRight className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <ShoppingBag className="w-5 h-5 text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">{transaction.title}</p>
-                        <p className="text-sm text-muted-foreground">{transaction.description}</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <Calendar className="w-3 h-3" />
-                          <span>{transaction.date} • {transaction.time}</span>
-                          <span className="text-primary">#{transaction.orderId}</span>
+                        <div className="flex items-center gap-4">
+                          <div className={cn("p-3 rounded-lg", isIngreso ? "bg-green-500/10" : "bg-primary/10")}>
+                            {isIngreso ? (
+                              <ArrowDownRight className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <ShoppingBag className="w-5 h-5 text-primary" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">
+                              {isIngreso ? 'Recarga de saldo' : 'Compra'}
+                            </p>
+                            <p className="text-sm text-muted-foreground line-clamp-1">{t.descripcion}</p>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <Calendar className="w-3 h-3" />
+                              <span>{new Date(t.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                              {t.referencia && <span className="text-primary">#{t.referencia}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-4 sm:flex-col sm:items-end">
+                          <p className={cn(
+                            "text-lg font-bold",
+                            isIngreso ? "text-green-500" : "text-foreground"
+                          )}>
+                            {isIngreso ? '+' : '-'}${t.monto.toLocaleString('es-CO')}
+                          </p>
+                          <Badge variant="outline" className={statusClass(t.estado)}>
+                            {displayStatus(t.estado)}
+                          </Badge>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 sm:flex-col sm:items-end">
-                      <p
-                        className={cn(
-                          "text-lg font-bold",
-                          transaction.amount > 0
-                            ? "text-green-500"
-                            : transaction.status === "reembolsado"
-                            ? "text-muted-foreground line-through"
-                            : "text-foreground"
-                        )}
-                      >
-                        {transaction.amount > 0 ? "+" : ""}${Math.abs(transaction.amount).toFixed(2)}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          transaction.status === "completado"
-                            ? "text-green-500 border-green-500/30"
-                            : "text-yellow-500 border-yellow-500/30"
-                        )}
-                      >
-                        {transaction.status === "completado" ? "Completado" : "Reembolsado"}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    )
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </FadeIn>

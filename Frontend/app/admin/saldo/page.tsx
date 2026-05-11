@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,19 +14,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FadeIn, CountUp } from "@/components/animations/motion"
-import { 
-  Wallet, 
-  Clock, 
-  Check, 
+import {
+  Wallet,
+  Clock,
+  Check,
   X,
   DollarSign,
   TrendingUp,
@@ -35,182 +28,138 @@ import {
   Users,
   Loader2,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { api, type User } from "@/lib/api"
-
-interface RechargeRequest {
-  id: number
-  user: string
-  email: string
-  amount: number
-  method: string
-  reference: string
-  date: string
-  status: "pendiente" | "aprobado" | "rechazado"
-}
-
-const initialRechargeRequests: RechargeRequest[] = [
-  {
-    id: 1,
-    user: "Carlos Martínez",
-    email: "carlos@email.com",
-    amount: 100000,
-    method: "Transferencia",
-    reference: "TRF-2024-001234",
-    date: "18 Ene 2024 14:32",
-    status: "pendiente",
-  },
-  {
-    id: 2,
-    user: "Ana Rodríguez",
-    email: "ana@email.com",
-    amount: 50000,
-    method: "Nequi",
-    reference: "NEQ-2024-005678",
-    date: "18 Ene 2024 12:15",
-    status: "pendiente",
-  },
-  {
-    id: 3,
-    user: "Luis Pérez",
-    email: "luis@email.com",
-    amount: 200000,
-    method: "Transferencia",
-    reference: "TRF-2024-001233",
-    date: "17 Ene 2024 18:45",
-    status: "aprobado",
-  },
-  {
-    id: 4,
-    user: "María Santos",
-    email: "maria@email.com",
-    amount: 75000,
-    method: "Daviplata",
-    reference: "DAV-2024-009876",
-    date: "17 Ene 2024 11:20",
-    status: "aprobado",
-  },
-  {
-    id: 5,
-    user: "Pedro García",
-    email: "pedro@email.com",
-    amount: 30000,
-    method: "Transferencia",
-    reference: "TRF-2024-001230",
-    date: "16 Ene 2024 16:08",
-    status: "rechazado",
-  },
-]
+import { api, type AdminTransaccion, type WalletWithUser } from "@/lib/api"
 
 export default function AdminSaldoPage() {
-  const [requests, setRequests] = useState<RechargeRequest[]>(initialRechargeRequests)
-  const [processingId, setProcessingId] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState("solicitudes")
-  
-  // Add balance states
-  const [users, setUsers] = useState<User[]>([])
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
+
+  // ── Solicitudes ──────────────────────────────────────────────────────────────
+  const [solicitudes, setSolicitudes] = useState<AdminTransaccion[]>([])
+  const [isLoadingSolicitudes, setIsLoadingSolicitudes] = useState(true)
+  const [solicitudesError, setSolicitudesError] = useState<string | null>(null)
+  const [processingId, setProcessingId] = useState<number | null>(null)
+
+  const loadSolicitudes = useCallback(async () => {
+    setIsLoadingSolicitudes(true)
+    setSolicitudesError(null)
+    try {
+      const data = await api.getAdminTransacciones('PENDIENTE')
+      // Sólo mostramos ingresos pendientes (solicitudes de recarga)
+      setSolicitudes(data.filter((t) => t.tipo === 'deposit'))
+    } catch (err) {
+      setSolicitudesError(err instanceof Error ? err.message : 'Error cargando solicitudes')
+    } finally {
+      setIsLoadingSolicitudes(false)
+    }
+  }, [])
+
+  useEffect(() => { loadSolicitudes() }, [loadSolicitudes])
+
+  const handleApprove = async (t: AdminTransaccion) => {
+    setProcessingId(t.id)
+    try {
+      await api.updateAdminTransaccion(t.id, 'APROBADO')
+      setSolicitudes((prev) => prev.filter((s) => s.id !== t.id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al aprobar')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleReject = async (t: AdminTransaccion) => {
+    setProcessingId(t.id)
+    try {
+      await api.updateAdminTransaccion(t.id, 'RECHAZADO')
+      setSolicitudes((prev) => prev.filter((s) => s.id !== t.id))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al rechazar')
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  // ── Agregar Saldo ────────────────────────────────────────────────────────────
+  const [wallets, setWallets] = useState<WalletWithUser[]>([])
+  const [isLoadingWallets, setIsLoadingWallets] = useState(false)
+  const [walletsError, setWalletsError] = useState<string | null>(null)
   const [searchUser, setSearchUser] = useState("")
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedWallet, setSelectedWallet] = useState<WalletWithUser | null>(null)
   const [addBalanceOpen, setAddBalanceOpen] = useState(false)
   const [addAmount, setAddAmount] = useState("")
   const [addDescription, setAddDescription] = useState("")
   const [isAddingBalance, setIsAddingBalance] = useState(false)
   const [addSuccess, setAddSuccess] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
 
-  // Load users
-  useEffect(() => {
-    if (activeTab === "agregar") {
-      loadUsers()
-    }
-  }, [activeTab])
-
-  const loadUsers = async () => {
-    setIsLoadingUsers(true)
+  const loadWallets = useCallback(async () => {
+    setIsLoadingWallets(true)
+    setWalletsError(null)
     try {
-      const data = await api.getUsers()
-      setUsers(data)
-    } catch (error) {
-      console.error("Error loading users:", error)
+      const data = await api.getWallets()
+      setWallets(data)
+    } catch (err) {
+      setWalletsError(err instanceof Error ? err.message : 'Error cargando wallets')
     } finally {
-      setIsLoadingUsers(false)
+      setIsLoadingWallets(false)
     }
-  }
+  }, [])
 
-  const handleApprove = async (id: number) => {
-    setProcessingId(id)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "aprobado" } : r))
-    )
-    setProcessingId(null)
-  }
+  useEffect(() => {
+    if (activeTab === 'agregar') loadWallets()
+  }, [activeTab, loadWallets])
 
-  const handleReject = async (id: number) => {
-    setProcessingId(id)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: "rechazado" } : r))
-    )
-    setProcessingId(null)
-  }
+  const filteredWallets = wallets.filter(
+    (w) =>
+      w.user.name.toLowerCase().includes(searchUser.toLowerCase()) ||
+      w.user.email.toLowerCase().includes(searchUser.toLowerCase())
+  )
 
   const handleAddBalance = async () => {
-    if (!selectedUser || !addAmount) return
+    if (!selectedWallet || !addAmount) return
+    const monto = parseFloat(addAmount)
+    if (isNaN(monto) || monto === 0) return
 
     setIsAddingBalance(true)
+    setAddError(null)
     try {
-      await api.addUserBalance(
-        selectedUser.id,
-        parseFloat(addAmount),
-        addDescription || `Saldo agregado por administrador`
+      const result = await api.adjustWalletBalance(
+        selectedWallet.id,
+        monto,
+        addDescription || `Ajuste manual por administrador`
       )
-      
-      // Update local user list
-      setUsers(prev => prev.map(u => 
-        u.id === selectedUser.id 
-          ? { ...u, balance: u.balance + parseFloat(addAmount) }
-          : u
-      ))
-      
+      // Actualiza saldo en lista local
+      setWallets((prev) =>
+        prev.map((w) => (w.id === selectedWallet.id ? { ...w, saldo: result.wallet.saldo } : w))
+      )
       setAddSuccess(true)
       setTimeout(() => {
         setAddSuccess(false)
         setAddBalanceOpen(false)
-        setSelectedUser(null)
+        setSelectedWallet(null)
         setAddAmount("")
         setAddDescription("")
       }, 2000)
-    } catch (error) {
-      console.error("Error adding balance:", error)
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Error al ajustar saldo')
     } finally {
       setIsAddingBalance(false)
     }
   }
 
-  const pendingTotal = requests
-    .filter((r) => r.status === "pendiente")
-    .reduce((sum, r) => sum + r.amount, 0)
-
-  const approvedTotal = requests
-    .filter((r) => r.status === "aprobado")
-    .reduce((sum, r) => sum + r.amount, 0)
-
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchUser.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchUser.toLowerCase())
-  )
+  // ── Stats ────────────────────────────────────────────────────────────────────
+  const pendingTotal = solicitudes.reduce((sum, s) => sum + s.monto, 0)
 
   return (
     <div className="space-y-6">
       <FadeIn>
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-            Gestión de Saldo
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Gestión de Saldo</h1>
           <p className="text-muted-foreground">
-            Administra las solicitudes de recarga y agrega saldo a usuarios
+            Aprueba solicitudes de recarga y ajusta saldos manualmente
           </p>
         </div>
       </FadeIn>
@@ -226,15 +175,13 @@ export default function AdminSaldoPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Pendientes</p>
-                  <p className="text-xl font-bold text-foreground">
-                    {requests.filter((r) => r.status === "pendiente").length}
-                  </p>
+                  <p className="text-xl font-bold text-foreground">{solicitudes.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </FadeIn>
-        
+
         <FadeIn delay={0.15}>
           <Card className="bg-card border-border">
             <CardContent className="p-4">
@@ -252,7 +199,7 @@ export default function AdminSaldoPage() {
             </CardContent>
           </Card>
         </FadeIn>
-        
+
         <FadeIn delay={0.2}>
           <Card className="bg-card border-border">
             <CardContent className="p-4">
@@ -261,10 +208,8 @@ export default function AdminSaldoPage() {
                   <TrendingUp className="w-5 h-5 text-green-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Aprobado hoy</p>
-                  <p className="text-xl font-bold text-foreground">
-                    $<CountUp end={approvedTotal} duration={1.5} separator="," />
-                  </p>
+                  <p className="text-sm text-muted-foreground">Wallets activas</p>
+                  <p className="text-xl font-bold text-foreground">{wallets.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -278,133 +223,127 @@ export default function AdminSaldoPage() {
           <TabsList className="bg-secondary">
             <TabsTrigger value="solicitudes">
               <Clock className="w-4 h-4 mr-2" />
-              Solicitudes
+              Solicitudes ({solicitudes.length})
             </TabsTrigger>
             <TabsTrigger value="agregar">
               <Plus className="w-4 h-4 mr-2" />
-              Agregar Saldo
+              Ajustar Saldo
             </TabsTrigger>
           </TabsList>
 
-          {/* Solicitudes Tab */}
+          {/* ── Solicitudes Tab ─────────────────────────────────────────────── */}
           <TabsContent value="solicitudes" className="mt-4">
             <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle>Solicitudes de recarga</CardTitle>
-                <CardDescription>
-                  Revisa y procesa las solicitudes de recarga pendientes
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Solicitudes de recarga pendientes</CardTitle>
+                  <CardDescription>Aprueba o rechaza las solicitudes de los usuarios</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={loadSolicitudes} disabled={isLoadingSolicitudes}>
+                  <RefreshCw className={cn("w-4 h-4", isLoadingSolicitudes && "animate-spin")} />
+                </Button>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {requests.map((request, index) => (
-                    <div
-                      key={request.id}
-                      className={cn(
-                        "flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-lg border transition-all duration-300",
-                        request.status === "pendiente"
-                          ? "border-yellow-500/30 bg-yellow-500/5"
-                          : request.status === "aprobado"
-                          ? "border-green-500/30 bg-green-500/5"
-                          : "border-red-500/30 bg-red-500/5"
-                      )}
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex items-start gap-4 mb-4 lg:mb-0">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Wallet className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-semibold text-foreground">{request.user}</p>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                request.status === "pendiente"
-                                  ? "text-yellow-500 border-yellow-500/30 animate-pulse"
-                                  : request.status === "aprobado"
-                                  ? "text-green-500 border-green-500/30"
-                                  : "text-red-500 border-red-500/30"
-                              )}
-                            >
-                              {request.status === "pendiente" && <Clock className="w-3 h-3 mr-1" />}
-                              {request.status === "aprobado" && <Check className="w-3 h-3 mr-1" />}
-                              {request.status === "rechazado" && <X className="w-3 h-3 mr-1" />}
-                              {request.status}
-                            </Badge>
+                {isLoadingSolicitudes ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : solicitudesError ? (
+                  <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
+                    <AlertCircle className="w-10 h-10 text-red-500" />
+                    <p>{solicitudesError}</p>
+                    <Button variant="outline" size="sm" onClick={loadSolicitudes}>Reintentar</Button>
+                  </div>
+                ) : solicitudes.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-12">
+                    No hay solicitudes pendientes.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {solicitudes.map((s, index) => (
+                      <div
+                        key={s.id}
+                        className="flex flex-col lg:flex-row lg:items-center justify-between p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <div className="flex items-start gap-4 mb-4 lg:mb-0">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <Wallet className="w-6 h-6 text-primary" />
                           </div>
-                          <p className="text-sm text-muted-foreground">{request.email}</p>
-                          <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Wallet className="w-3 h-3" />
-                              {request.method}
-                            </span>
-                            <span>•</span>
-                            <span>{request.reference}</span>
-                            <span>•</span>
-                            <span>{request.date}</span>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-semibold text-foreground">
+                                {s.wallet?.user?.name ?? 'Usuario desconocido'}
+                              </p>
+                              <Badge variant="outline" className="text-yellow-500 border-yellow-500/30 animate-pulse">
+                                <Clock className="w-3 h-3 mr-1" />
+                                pendiente
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {s.wallet?.user?.email}
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
+                              <span>{s.referencia || 'Sin referencia'}</span>
+                              <span>•</span>
+                              <span>{new Date(s.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            {s.descripcion && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{s.descripcion}</p>
+                            )}
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
+                        <div className="flex items-center gap-4">
                           <p className="text-2xl font-bold text-primary">
-                            ${request.amount.toLocaleString("es-CO")}
+                            ${s.monto.toLocaleString('es-CO')}
                           </p>
-                        </div>
-
-                        {request.status === "pendiente" && (
                           <div className="flex gap-2">
                             <Button
                               size="sm"
                               className="bg-green-500 hover:bg-green-600 text-white"
-                              onClick={() => handleApprove(request.id)}
-                              disabled={processingId === request.id}
+                              onClick={() => handleApprove(s)}
+                              disabled={processingId === s.id}
                             >
-                              {processingId === request.id ? (
+                              {processingId === s.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
-                                <>
-                                  <Check className="w-4 h-4 mr-1" />
-                                  Aprobar
-                                </>
+                                <><Check className="w-4 h-4 mr-1" />Aprobar</>
                               )}
                             </Button>
                             <Button
                               size="sm"
                               variant="outline"
                               className="border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white bg-transparent"
-                              onClick={() => handleReject(request.id)}
-                              disabled={processingId === request.id}
+                              onClick={() => handleReject(s)}
+                              disabled={processingId === s.id}
                             >
                               <X className="w-4 h-4 mr-1" />
                               Rechazar
                             </Button>
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Agregar Saldo Tab */}
+          {/* ── Ajustar Saldo Tab ────────────────────────────────────────────── */}
           <TabsContent value="agregar" className="mt-4">
             <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5" />
-                  Agregar Saldo a Usuario
+                  Ajustar Saldo de Usuario
                 </CardTitle>
                 <CardDescription>
-                  Selecciona un usuario y agrega saldo manualmente a su cuenta
+                  Agrega o descuenta saldo manualmente de la wallet de un usuario
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Search */}
                 <div className="relative mb-6">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -415,50 +354,51 @@ export default function AdminSaldoPage() {
                   />
                 </div>
 
-                {/* Users List */}
-                {isLoadingUsers ? (
+                {isLoadingWallets ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
+                ) : walletsError ? (
+                  <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground">
+                    <AlertCircle className="w-10 h-10 text-red-500" />
+                    <p>{walletsError}</p>
+                    <Button variant="outline" size="sm" onClick={loadWallets}>Reintentar</Button>
+                  </div>
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {filteredUsers.map((user) => (
+                    {filteredWallets.map((w) => (
                       <div
-                        key={user.id}
+                        key={w.id}
                         className="flex items-center justify-between p-4 rounded-lg border border-border hover:border-primary/50 transition-colors"
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                            {user.name.charAt(0).toUpperCase()}
+                            {w.user.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-semibold text-foreground">{user.name}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                            <p className="font-semibold text-foreground">{w.user.name}</p>
+                            <p className="text-sm text-muted-foreground">{w.user.email}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
                             <p className="text-xs text-muted-foreground">Saldo actual</p>
                             <p className="font-semibold text-primary">
-                              ${user.balance.toLocaleString("es-CO")}
+                              ${w.saldo.toLocaleString('es-CO')}
                             </p>
                           </div>
                           <Button
                             size="sm"
                             className="bg-primary text-primary-foreground"
-                            onClick={() => {
-                              setSelectedUser(user)
-                              setAddBalanceOpen(true)
-                            }}
+                            onClick={() => { setSelectedWallet(w); setAddBalanceOpen(true) }}
                           >
                             <Plus className="w-4 h-4 mr-1" />
-                            Agregar
+                            Ajustar
                           </Button>
                         </div>
                       </div>
                     ))}
-
-                    {filteredUsers.length === 0 && (
+                    {filteredWallets.length === 0 && (
                       <div className="text-center py-12 text-muted-foreground">
                         <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
                         <p>No se encontraron usuarios</p>
@@ -473,73 +413,76 @@ export default function AdminSaldoPage() {
       </FadeIn>
 
       {/* Add Balance Dialog */}
-      <Dialog open={addBalanceOpen} onOpenChange={(open) => {
-        if (!open) {
-          setAddBalanceOpen(false)
-          setSelectedUser(null)
-          setAddAmount("")
-          setAddDescription("")
-          setAddSuccess(false)
-        }
-      }}>
+      <Dialog
+        open={addBalanceOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAddBalanceOpen(false)
+            setSelectedWallet(null)
+            setAddAmount("")
+            setAddDescription("")
+            setAddSuccess(false)
+            setAddError(null)
+          }
+        }}
+      >
         <DialogContent className="bg-card border-border sm:max-w-md">
           {addSuccess ? (
             <div className="py-8 text-center">
               <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
                 <Check className="w-8 h-8 text-green-500" />
               </div>
-              <DialogTitle className="text-green-500 mb-2">Saldo Agregado</DialogTitle>
+              <DialogTitle className="text-green-500 mb-2">Saldo Ajustado</DialogTitle>
               <DialogDescription>
-                Se agregaron ${parseFloat(addAmount).toLocaleString("es-CO")} a {selectedUser?.name}
+                Se aplicó un ajuste de ${parseFloat(addAmount || '0').toLocaleString('es-CO')} a{' '}
+                {selectedWallet?.user?.name}
               </DialogDescription>
             </div>
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Agregar Saldo</DialogTitle>
+                <DialogTitle>Ajustar Saldo</DialogTitle>
                 <DialogDescription>
-                  Agrega saldo a la cuenta de {selectedUser?.name}
+                  Usa un valor positivo para agregar saldo o negativo para descontar
                 </DialogDescription>
               </DialogHeader>
 
               <div className="space-y-4 py-4">
-                {/* User Info */}
+                {/* User info */}
                 <div className="p-4 rounded-lg bg-secondary/50">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-                      {selectedUser?.name.charAt(0).toUpperCase()}
+                      {selectedWallet?.user?.name?.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">{selectedUser?.name}</p>
-                      <p className="text-sm text-muted-foreground">{selectedUser?.email}</p>
+                      <p className="font-semibold text-foreground">{selectedWallet?.user?.name}</p>
+                      <p className="text-sm text-muted-foreground">{selectedWallet?.user?.email}</p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-border">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Saldo actual:</span>
-                      <span className="font-semibold text-primary">
-                        ${selectedUser?.balance.toLocaleString("es-CO")}
-                      </span>
-                    </div>
+                  <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Saldo actual:</span>
+                    <span className="font-semibold text-primary">
+                      ${selectedWallet?.saldo.toLocaleString('es-CO')}
+                    </span>
                   </div>
                 </div>
 
-                {/* Amount */}
+                {/* Quick amounts */}
                 <div className="space-y-2">
-                  <Label>Monto a agregar</Label>
+                  <Label>Monto (positivo = agregar, negativo = descontar)</Label>
                   <div className="grid grid-cols-4 gap-2 mb-2">
                     {[10000, 25000, 50000, 100000].map((preset) => (
                       <Button
                         key={preset}
-                        variant={addAmount === String(preset) ? "default" : "outline"}
+                        variant={addAmount === String(preset) ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setAddAmount(String(preset))}
                         className={cn(
-                          "text-xs",
-                          addAmount === String(preset) && "bg-primary text-primary-foreground"
+                          'text-xs',
+                          addAmount === String(preset) && 'bg-primary text-primary-foreground'
                         )}
                       >
-                        ${(preset / 1000)}k
+                        ${preset / 1000}k
                       </Button>
                     ))}
                   </div>
@@ -555,26 +498,41 @@ export default function AdminSaldoPage() {
                   </div>
                 </div>
 
-                {/* Description */}
+                {/* Motivo */}
                 <div className="space-y-2">
-                  <Label>Descripción (opcional)</Label>
+                  <Label>Motivo (requerido)</Label>
                   <Textarea
-                    placeholder="Ej: Bonificación por referido, Corrección de saldo, etc."
+                    placeholder="Ej: Bonificación por referido, corrección de saldo, etc."
                     value={addDescription}
                     onChange={(e) => setAddDescription(e.target.value)}
                     rows={2}
                   />
                 </div>
 
-                {/* New Balance Preview */}
-                {addAmount && (
-                  <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                {/* Preview */}
+                {addAmount && !isNaN(parseFloat(addAmount)) && (
+                  <div className={cn(
+                    "p-3 rounded-lg border",
+                    parseFloat(addAmount) >= 0
+                      ? "bg-green-500/10 border-green-500/30"
+                      : "bg-red-500/10 border-red-500/30"
+                  )}>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Nuevo saldo:</span>
-                      <span className="font-bold text-green-500">
-                        ${((selectedUser?.balance || 0) + parseFloat(addAmount || "0")).toLocaleString("es-CO")}
+                      <span className={cn(
+                        "font-bold",
+                        parseFloat(addAmount) >= 0 ? "text-green-500" : "text-red-500"
+                      )}>
+                        ${((selectedWallet?.saldo ?? 0) + parseFloat(addAmount)).toLocaleString('es-CO')}
                       </span>
                     </div>
+                  </div>
+                )}
+
+                {addError && (
+                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-500" />
+                    <p className="text-sm text-red-500">{addError}</p>
                   </div>
                 )}
               </div>
@@ -590,18 +548,12 @@ export default function AdminSaldoPage() {
                 <Button
                   className="flex-1 bg-primary text-primary-foreground"
                   onClick={handleAddBalance}
-                  disabled={!addAmount || parseFloat(addAmount) <= 0 || isAddingBalance}
+                  disabled={!addAmount || isNaN(parseFloat(addAmount)) || parseFloat(addAmount) === 0 || !addDescription || isAddingBalance}
                 >
                   {isAddingBalance ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Agregando...
-                    </>
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Aplicando...</>
                   ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Agregar Saldo
-                    </>
+                    <><Plus className="w-4 h-4 mr-2" />Aplicar Ajuste</>
                   )}
                 </Button>
               </div>

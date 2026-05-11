@@ -67,14 +67,12 @@ class CompraController extends Controller
             $saldoNuevo = $saldoAnterior - $oferta->precio;
 
             $transaccion = Transaccion::create([
-                'wallet_id' => $user->wallet->id,
-                'tipo' => 'egreso',
-                'monto' => $oferta->precio,
+                'wallet_id'      => $user->wallet->id,
+                'tipo'           => 'withdraw',
+                'monto'          => $oferta->precio,
                 'saldo_anterior' => $saldoAnterior,
-                'saldo_nuevo' => $saldoNuevo,
-                'estado' => 'pendiente',
-                'descripcion' => "Compra de oferta #{$oferta->id} - Pendiente de aprobación",
-                'referencia' => 'COMPRA-' . time() . '-' . $user->id
+                'saldo_nuevo'    => $saldoNuevo,
+                'descripcion'    => "Compra de oferta #{$oferta->id} - Pendiente de aprobación",
             ]);
 
 

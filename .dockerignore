@@ -1,0 +1,14 @@
+node_modules/
+vendor/
+.git/
+Frontend/.next/
+Frontend/node_modules/
+Backend/vendor/
+Backend/public/build/
+Backend/public/hot
+Backend/storage/framework/sessions/*
+Backend/storage/framework/views/*
+Backend/storage/framework/cache/*
+Backend/storage/logs/*
+*.log
+Backend/.env.example

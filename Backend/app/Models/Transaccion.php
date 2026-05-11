@@ -14,12 +14,17 @@ class Transaccion extends Model
         'monto',
         'saldo_anterior',
         'saldo_nuevo',
-        'referencia_pago',
-        'descripcion'
+        'descripcion',
+        'estado',
     ];
 
     public function wallet()
     {
         return $this->belongsTo(Wallet::class);
+    }
+
+    public function compra()
+    {
+        return $this->hasOne(Compra::class);
     }
 }

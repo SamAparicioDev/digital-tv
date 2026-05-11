@@ -35,8 +35,9 @@ class RecargaController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'monto' => 'required|numeric|min:0.01',
-            'referencia_pago' => 'nullable|string|max:255'
+            'monto'           => 'required|numeric|min:0.01',
+            'metodo_pago'     => 'nullable|string|max:50',
+            'referencia_pago' => 'nullable|string|max:255',
         ]);
 
         $user = $request->user();
@@ -50,15 +51,16 @@ class RecargaController extends Controller
         $saldoAnterior = $wallet->saldo;
         $saldoNuevo = $saldoAnterior + $request->monto;
 
+        $metodo = $request->metodo_pago ? ' | Método: ' . $request->metodo_pago : '';
+        $referencia = $request->referencia_pago ? ' | Ref: ' . $request->referencia_pago : '';
+
         $transaccion = Transaccion::create([
-            'wallet_id' => $wallet->id,
-            'tipo'      => 'ingreso',
-            'monto'     => $request->monto,
+            'wallet_id'      => $wallet->id,
+            'tipo'           => 'deposit',
+            'monto'          => $request->monto,
             'saldo_anterior' => $saldoAnterior,
             'saldo_nuevo'    => $saldoNuevo,
-            'estado'    => 'pendiente',
-            'referencia' => $request->referencia_pago ?? 'REC-' . strtoupper(Str::random(8)),
-            'descripcion' => 'Solicitud de recarga de saldo'
+            'descripcion'    => 'Solicitud de recarga de saldo' . $metodo . $referencia,
         ]);
 
         return response()->json([

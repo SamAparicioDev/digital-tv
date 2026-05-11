@@ -1,0 +1,21 @@
+services:
+
+  # Backend Laravel → http://localhost:8000
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  # Frontend Next.js → http://localhost:3000
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
