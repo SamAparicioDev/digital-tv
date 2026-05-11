@@ -19,10 +19,14 @@ import {
   User,
   Loader2,
   ShieldCheck,
+  Home,
 } from "lucide-react"
+
+import { KeyRound } from "lucide-react"
 
 const navItems = [
   { label: "Panel", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Mis Cuentas", href: "/dashboard/mis-cuentas", icon: KeyRound },
   { label: "Saldo", href: "/dashboard/saldo", icon: Wallet },
   { label: "Historial", href: "/dashboard/historial", icon: History },
   { label: "Configuración", href: "/dashboard/configuracion", icon: Settings },
@@ -78,7 +82,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <Link href="/" className="flex items-center gap-2 group">
             <Play className="w-8 h-8 text-primary fill-primary transition-transform duration-300 group-hover:scale-110" />
             <span className="text-xl font-bold text-sidebar-foreground">
-              Stream<span className="text-primary">Plus</span>
+              Digital<span className="text-primary">Tv</span>
             </span>
           </Link>
         </div>
@@ -107,6 +111,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
             )
           })}
+
+          {/* Ir al inicio */}
+          <Link
+            href="/"
+            onClick={() => setIsSidebarOpen(false)}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          >
+            <Home className="w-5 h-5" />
+            <span className="font-medium">Inicio</span>
+          </Link>
 
           {/* Acceso rápido al admin si el usuario también tiene ese rol */}
           {isAdmin && (

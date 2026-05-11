@@ -26,6 +26,14 @@ class StreamingService extends Model
         'is_active' => 'boolean',
     ];
 
+    // Devuelve la URL completa del logo (path relativo → URL pública)
+    public function getLogoUrlAttribute($value): ?string
+    {
+        if (!$value) return null;
+        if (filter_var($value, FILTER_VALIDATE_URL)) return $value;
+        return url("storage/{$value}");
+    }
+
     public function ofertas(): BelongsToMany
     {
         return $this->belongsToMany(

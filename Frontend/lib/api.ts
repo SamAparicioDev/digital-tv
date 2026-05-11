@@ -11,7 +11,7 @@ const API_BASE = (() => {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface Role {
-  id: number
+  id: string   // UUID en la BD
   nombre: string
 }
 
@@ -25,6 +25,7 @@ export interface User {
   id: number
   name: string
   email: string
+  is_active: boolean
   /** Mapped from wallet.saldo on login/register/getUser */
   balance: number
   created_at: string
@@ -32,9 +33,28 @@ export interface User {
   wallet?: Wallet
 }
 
+export interface NumeroCuenta {
+  id: number
+  numero: string
+  descripcion: string | null
+}
+
+export interface MetodoPago {
+  id: number
+  nombre: string
+  tipo: 'banco' | 'sistema'
+  emoji: string | null
+  color: string | null
+  is_active: boolean
+  numero_cuentas: NumeroCuenta[]
+}
+
 export interface Transaccion {
   id: number
   wallet_id: number
+  metodo_pago_id: number | null
+  referencia_pago: string | null
+  comprobante_url: string | null
   /** 'deposit' = recarga/crédito, 'withdraw' = compra/débito */
   tipo: 'deposit' | 'withdraw'
   monto: number
@@ -45,6 +65,7 @@ export interface Transaccion {
   descripcion: string
   created_at: string
   updated_at: string
+  metodo_pago?: MetodoPago
 }
 
 export interface RecargasResponse {
@@ -134,9 +155,55 @@ export interface Descuento {
   fecha_fin: string | null
   es_recurrente: boolean
   is_active: boolean
+  streaming_service_id: number | null
+  valor_global: number | null
+  tipo_global: 'porcentaje' | 'fijo' | null
   created_at: string
   updated_at: string
   roles?: DescuentoRole[]
+  streaming_service?: { id: number; name: string; primary_color: string | null } | null
+  streaming_services?: { id: number; name: string; primary_color: string | null }[]
+}
+
+// ─── Cuentas / Credenciales ───────────────────────────────────────────────────
+
+export interface PerfilAdmin {
+  id: number
+  nombre: string
+  pin: string | null
+  is_active: boolean
+  disponible: boolean
+}
+
+export interface CuentaAdmin {
+  id: number
+  streaming_service_id: number
+  streaming_service: { id: number; name: string; primary_color: string | null; logo_url: string | null } | null
+  email: string
+  password: string
+  descripcion: string | null
+  vigencia_hasta: string | null
+  is_active: boolean
+  cuenta_asignada: boolean
+  perfiles_total: number
+  perfiles_disponibles: number
+  perfiles: PerfilAdmin[]
+}
+
+export interface MiCuenta {
+  id: number
+  compra_id: number
+  tipo: 'cuenta_completa' | 'perfil'
+  servicio: string
+  servicio_color: string
+  servicio_logo: string | null
+  email: string | null
+  password: string | null
+  perfil: { nombre: string; pin: string | null } | null
+  vigencia_desde: string
+  vigencia_hasta: string
+  vigente: boolean
+  dias_restantes: number
 }
 
 // ─── Deprecated types kept for UI compatibility ───────────────────────────────
@@ -263,16 +330,41 @@ export const api = {
     return handleResponse<RecargasResponse>(res)
   },
 
+  /** GET /api/metodos-pago → métodos de pago activos con sus números de cuenta */
+  async getMetodosPago(): Promise<MetodoPago[]> {
+    const res = await fetch(`${API_BASE}/metodos-pago`, { headers: headers() })
+    return handleResponse<MetodoPago[]>(res)
+  },
+
   /** POST /api/recargas → crea solicitud de recarga (estado: PENDIENTE) */
   async createRecarga(
     monto: number,
-    metodo_pago?: string,
-    referencia_pago?: string
+    metodo_pago_id: number,
+    referencia_pago: string
   ): Promise<{ ok: boolean; message: string; transaccion: Transaccion }> {
     const res = await fetch(`${API_BASE}/recargas`, {
       method: 'POST',
       headers: headers(),
-      body: JSON.stringify({ monto, metodo_pago, referencia_pago }),
+      body: JSON.stringify({ monto, metodo_pago_id, referencia_pago }),
+    })
+    return handleResponse(res)
+  },
+
+  /** POST /api/recargas/{id}/comprobante → sube imagen del comprobante */
+  async uploadComprobante(
+    transaccionId: number,
+    file: File
+  ): Promise<{ ok: boolean; comprobante_url: string }> {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`${API_BASE}/recargas/${transaccionId}/comprobante`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: formData,
     })
     return handleResponse(res)
   },
@@ -421,6 +513,120 @@ export const api = {
       body: JSON.stringify(data),
     })
     return handleResponse<Oferta>(res)
+  },
+
+  // ── Mis Cuentas (usuario) ─────────────────────────────────────────────────
+
+  async getMisCuentas(): Promise<MiCuenta[]> {
+    const res = await fetch(`${API_BASE}/mis-cuentas`, { headers: headers() })
+    return handleResponse<MiCuenta[]>(res)
+  },
+
+  // ── Admin: Cuentas de Streaming ───────────────────────────────────────────
+
+  async getAdminCuentas(): Promise<CuentaAdmin[]> {
+    const res = await fetch(`${API_BASE}/admin/cuentas`, { headers: headers() })
+    return handleResponse<CuentaAdmin[]>(res)
+  },
+
+  async createAdminCuenta(data: Partial<CuentaAdmin>): Promise<CuentaAdmin> {
+    const res = await fetch(`${API_BASE}/admin/cuentas`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<CuentaAdmin>(res)
+  },
+
+  async updateAdminCuenta(id: number, data: Partial<CuentaAdmin>): Promise<CuentaAdmin> {
+    const res = await fetch(`${API_BASE}/admin/cuentas/${id}`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<CuentaAdmin>(res)
+  },
+
+  /** POST /api/upload → sube una imagen y devuelve la URL pública */
+  async uploadImagen(file: File, carpeta = 'imagenes'): Promise<string> {
+    const token = getToken()
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('carpeta', carpeta)
+    const res = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    })
+    const data = await handleResponse<{ ok: boolean; url: string }>(res)
+    return data.url
+  },
+
+  /** POST /api/admin/asignaciones → asigna credencial a usuario sin compra */
+  async asignarCredencial(data: {
+    user_id: number
+    cuenta_id?: number | null
+    perfil_id?: number | null
+    vigencia_desde: string
+    vigencia_hasta: string
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/asignaciones`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse(res)
+  },
+
+  async toggleUserStatus(userId: number): Promise<{ ok: boolean; is_active: boolean }> {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/toggle`, { method: 'PUT', headers: headers() })
+    return handleResponse(res)
+  },
+
+  async getRoles(): Promise<Role[]> {
+    const res = await fetch(`${API_BASE}/rol`, { headers: headers() })
+    return handleResponse<Role[]>(res)
+  },
+
+  async createOferta(data: {
+    precio: number; stock: number; garantia_dias: number
+    cuenta_completa: boolean; is_active: boolean
+    servicios_incluidos: Array<{ streaming_service_id: number; numero_perfiles: number; duracion_dias: number }>
+  }): Promise<Oferta> {
+    const res = await fetch(`${API_BASE}/oferta`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<Oferta>(res)
+  },
+
+  async createDescuento(data: {
+    nombre: string; codigo?: string; descripcion?: string
+    fecha_inicio: string; fecha_fin?: string
+    es_recurrente: boolean; is_active: boolean
+    roles_asignar?: Array<{ role_id: number; valor_descuento: number; tipo_descuento: 'porcentaje' | 'fijo' }>
+  }): Promise<Descuento> {
+    const res = await fetch(`${API_BASE}/descuento`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<Descuento>(res)
+  },
+
+  async updateDescuento(id: number, data: Partial<Parameters<typeof api.createDescuento>[0]>): Promise<Descuento> {
+    const res = await fetch(`${API_BASE}/descuento/${id}`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<Descuento>(res)
+  },
+
+  async deleteAdminCuenta(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/admin/cuentas/${id}`, { method: 'DELETE', headers: headers() })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? `HTTP ${res.status}`)
+  },
+
+  async createAdminPerfil(cuentaId: number, data: { nombre: string; pin?: string }): Promise<PerfilAdmin> {
+    const res = await fetch(`${API_BASE}/admin/cuentas/${cuentaId}/perfiles`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<PerfilAdmin>(res)
+  },
+
+  async deleteAdminPerfil(perfilId: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/admin/perfiles/${perfilId}`, { method: 'DELETE', headers: headers() })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? `HTTP ${res.status}`)
   },
 
   // ─── DEPRECATED ─────────────────────────────────────────────────────────────

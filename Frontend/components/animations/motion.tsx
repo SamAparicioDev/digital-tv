@@ -186,7 +186,7 @@ export function CountUp({
   return (
     <span ref={ref} className={className}>
       {prefix}
-      {count.toLocaleString()}
+      {count.toLocaleString('es-CO')}
       {suffix}
     </span>
   )
@@ -256,7 +256,10 @@ export function AnimatedCounter({
 
   return (
     <span className={className}>
-      {displayValue.toFixed(decimals)}
+      {Number(displayValue.toFixed(decimals)).toLocaleString('es-CO', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })}
     </span>
   )
 }

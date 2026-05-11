@@ -23,14 +23,19 @@ import {
   LogOut,
   User,
   Loader2,
+  Home,
+  KeyRound,
+  Monitor,
 } from "lucide-react"
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Usuarios", href: "/admin/usuarios", icon: Users },
   { label: "Saldo", href: "/admin/saldo", icon: Wallet },
+  { label: "Cuentas", href: "/admin/cuentas", icon: KeyRound },
+  { label: "Ofertas", href: "/admin/pantallas", icon: Monitor },
+  { label: "Servicios", href: "/admin/estrenos", icon: Film },
   { label: "Promociones", href: "/admin/promociones", icon: Percent },
-  { label: "Estrenos", href: "/admin/estrenos", icon: Film },
   { label: "Reportes", href: "/admin/reportes", icon: BarChart2 },
 ]
 
@@ -92,7 +97,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <Play className="w-8 h-8 text-primary fill-primary transition-transform duration-300 group-hover:scale-110 flex-shrink-0" />
             {!isSidebarCollapsed && (
               <span className="text-xl font-bold text-sidebar-foreground">
-                <span className="text-primary">Admin</span>
+                Digital<span className="text-primary">Tv</span>
               </span>
             )}
           </Link>
@@ -133,6 +138,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* User + Settings */}
         <div className="p-3 border-t border-sidebar-border space-y-1">
+          <Link
+            href="/"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors duration-200",
+              isSidebarCollapsed && "justify-center px-2"
+            )}
+            title="Ir al inicio"
+          >
+            <Home className="w-5 h-5" />
+            {!isSidebarCollapsed && <span className="font-medium text-sm">Ir al inicio</span>}
+          </Link>
+
           <Link
             href="/admin/configuracion"
             className={cn(

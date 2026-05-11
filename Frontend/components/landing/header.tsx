@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
-import { Menu, X, Coins, User, ChevronDown } from "lucide-react"
+import { Menu, X, Coins, User, ChevronDown, LayoutDashboard } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +23,8 @@ interface HeaderProps {
 export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, isAdmin, logout } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -92,6 +94,16 @@ export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
           <div className="flex items-center gap-3">
             {isAuthenticated && user ? (
               <>
+                {/* Menú / Panel button */}
+                <Button
+                  onClick={() => router.push(isAdmin ? '/admin' : '/dashboard')}
+                  className="hidden sm:flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200"
+                  size="sm"
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  Menú
+                </Button>
+
                 {/* Balance Button */}
                 <Button
                   variant="outline"
@@ -210,6 +222,13 @@ export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
             {isAuthenticated && user ? (
               <>
                 <div className="border-t border-border my-2" />
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); router.push(isAdmin ? '/admin' : '/dashboard') }}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 rounded-lg transition-all duration-200 w-full text-left"
+                >
+                  <LayoutDashboard className="w-5 h-5 text-primary" />
+                  <span className="font-medium text-foreground">Menú</span>
+                </button>
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false)

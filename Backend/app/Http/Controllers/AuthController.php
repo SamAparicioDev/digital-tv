@@ -67,6 +67,14 @@ class AuthController extends Controller
 
         $usuario = Auth::user();
 
+        if (!$usuario->is_active) {
+            Auth::guard('web')->logout();
+            return response()->json([
+                'ok'    => false,
+                'error' => 'Tu cuenta está desactivada. Contacta al administrador.',
+            ], 403);
+        }
+
 
         $token = $usuario->createToken('auth_token')->plainTextToken;
 

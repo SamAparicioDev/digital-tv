@@ -8,10 +8,9 @@ class Wallet extends Model
 {
     protected $table = 'wallet';
 
-    protected $fillable = [
-        'user_id',
-        'saldo'
-    ];
+    protected $fillable = ['user_id', 'saldo'];
+
+    protected $casts = ['saldo' => 'float'];
     public function user()
     {
         return $this->belongsTo(User::class);

@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { api, type Transaccion, type Compra } from "@/lib/api"
+import { api, type Transaccion, type Compra, type MetodoPago } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -38,6 +38,11 @@ import {
   Calendar,
   LogOut,
   PackageCheck,
+  Upload,
+  X,
+  ImageIcon,
+  AlertCircle,
+  Copy,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FadeIn, AnimatedCounter } from "@/components/animations/motion"
@@ -292,7 +297,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
         onClose={() => setIsRechargeOpen(false)}
         currentBalance={user.balance}
         onSuccess={async () => {
-          setIsRechargeOpen(false)
+          // No cerrar el dialog — el paso de éxito muestra el upload del comprobante
           await refreshUser()
           await loadData()
         }}
@@ -386,6 +391,8 @@ function CompraCard({ compra }: { compra: Compra }) {
 
 // ─── RechargeDialog ───────────────────────────────────────────────────────────
 
+const PRESET_AMOUNTS = [10000, 25000, 50000, 100000]
+
 function RechargeDialog({
   isOpen,
   onClose,
@@ -397,30 +404,51 @@ function RechargeDialog({
   currentBalance: number
   onSuccess: () => Promise<void>
 }) {
+  const [metodos, setMetodos] = useState<MetodoPago[]>([])
+  const [selectedMetodo, setSelectedMetodo] = useState<MetodoPago | null>(null)
   const [amount, setAmount] = useState("")
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(null)
   const [referencia, setReferencia] = useState("")
+  const [copied, setCopied] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const presetAmounts = [10000, 25000, 50000, 100000]
+  // Post-submit
+  const [createdTxId, setCreatedTxId] = useState<number | null>(null)
+  const [step, setStep] = useState<'form' | 'success'>('form')
 
-  const handleRecharge = async () => {
-    if (!amount) return
-    const monto = parseFloat(amount)
-    if (isNaN(monto) || monto <= 0) return
+  // Comprobante
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [comprobanteFile, setComprobanteFile] = useState<File | null>(null)
+  const [comprobantePreview, setComprobantePreview] = useState<string | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploaded, setUploaded] = useState(false)
 
+  useEffect(() => {
+    if (isOpen && metodos.length === 0) {
+      api.getMetodosPago().then(setMetodos).catch(() => {})
+    }
+  }, [isOpen, metodos.length])
+
+  const finalAmount = selectedPreset ?? (amount ? parseFloat(amount) : 0)
+  const primaryCuenta = selectedMetodo?.numero_cuentas?.[0]
+  const canSubmit = selectedMetodo && finalAmount >= 1000 && referencia.trim().length > 0
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSubmit = async () => {
+    if (!canSubmit || !selectedMetodo) return
     setIsLoading(true)
     setError(null)
     try {
-      await api.createRecarga(monto, referencia || undefined)
-      setSuccess(true)
-      setTimeout(async () => {
-        setSuccess(false)
-        setAmount("")
-        setReferencia("")
-        await onSuccess()
-      }, 2000)
+      const result = await api.createRecarga(finalAmount, selectedMetodo.id, referencia.trim())
+      setCreatedTxId(result.transaccion.id)
+      setStep('success')          // Mostrar paso de éxito primero
+      onSuccess().catch(() => {}) // Refrescar datos en segundo plano sin cerrar el dialog
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al enviar solicitud')
     } finally {
@@ -428,84 +456,192 @@ function RechargeDialog({
     }
   }
 
+  const handleComprobanteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setComprobanteFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => setComprobantePreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  const handleUpload = async () => {
+    if (!comprobanteFile || !createdTxId) return
+    setIsUploading(true)
+    try {
+      await api.uploadComprobante(createdTxId, comprobanteFile)
+      setUploaded(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al subir comprobante')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleClose = () => {
+    setStep('form')
+    setSelectedMetodo(null)
+    setAmount('')
+    setSelectedPreset(null)
+    setReferencia('')
+    setError(null)
+    setCreatedTxId(null)
+    setComprobanteFile(null)
+    setComprobantePreview(null)
+    setUploaded(false)
+    onClose()
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-background border-border">
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md bg-background border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Solicitar Recarga</DialogTitle>
+          <DialogTitle className="text-foreground">
+            {step === 'form' ? 'Solicitar Recarga' : '¡Solicitud Enviada!'}
+          </DialogTitle>
           <DialogDescription>
             Saldo actual: <span className="text-primary font-semibold">${currentBalance.toLocaleString('es-CO')}</span>
           </DialogDescription>
         </DialogHeader>
 
-        {success ? (
-          <div className="py-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-              <Check className="w-8 h-8 text-primary" />
+        {step === 'success' ? (
+          /* ── SUCCESS + UPLOAD ──────────────────────── */
+          <div className="space-y-4 py-2">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                <Check className="w-6 h-6 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Adjunta tu comprobante para que el administrador apruebe tu recarga más rápido.
+              </p>
             </div>
-            <p className="font-semibold text-foreground">¡Solicitud enviada!</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Tu recarga está pendiente de aprobación por un administrador.
-            </p>
+
+            {uploaded ? (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <p className="text-sm font-semibold text-green-500">Comprobante enviado correctamente</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Label className="text-sm">
+                  Comprobante de pago <span className="text-muted-foreground">(opcional)</span>
+                </Label>
+                {comprobantePreview ? (
+                  <div className="relative group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={comprobantePreview} alt="Comprobante" className="w-full max-h-36 object-contain rounded-lg border border-border" />
+                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100"
+                      onClick={() => { setComprobanteFile(null); setComprobantePreview(null) }}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-all cursor-pointer">
+                    <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Haz clic para adjuntar imagen</span>
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={handleComprobanteChange} />
+                {comprobanteFile && (
+                  <Button className="w-full bg-primary text-primary-foreground" onClick={handleUpload} disabled={isUploading}>
+                    {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Subiendo...</> : <><Upload className="w-4 h-4 mr-2" />Enviar comprobante</>}
+                  </Button>
+                )}
+                {error && <p className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
+              </div>
+            )}
+
+            <Button variant="ghost" className="w-full text-muted-foreground text-sm" onClick={handleClose}>
+              Cerrar
+            </Button>
           </div>
         ) : (
-          <div className="space-y-4 py-4">
-            <div className="space-y-3">
-              <Label>Monto a recargar (COP)</Label>
+          /* ── FORM ──────────────────────────────────── */
+          <div className="space-y-4 py-2">
+            {/* 1. Método */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                1. Método de pago
+              </Label>
+              {metodos.length === 0 ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                  <Loader2 className="w-3 h-3 animate-spin" /> Cargando métodos...
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {metodos.map((m) => {
+                    const cuenta = m.numero_cuentas?.[0]
+                    const isSelected = selectedMetodo?.id === m.id
+                    return (
+                      <button key={m.id} onClick={() => setSelectedMetodo(m)}
+                        className={cn('flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-center transition-all duration-150',
+                          isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40')}>
+                        <span className="text-lg">{m.emoji}</span>
+                        <span className="text-xs font-semibold text-foreground">{m.nombre}</span>
+                        {cuenta && <span className="text-xs font-mono text-muted-foreground">{cuenta.numero}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Cuenta con copiar */}
+            {selectedMetodo && primaryCuenta && (
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
+                <div>
+                  <p className="text-xs text-muted-foreground">{selectedMetodo.emoji} Transfiere a</p>
+                  <p className="font-bold font-mono text-foreground">{primaryCuenta.numero}</p>
+                  {primaryCuenta.descripcion && <p className="text-xs text-muted-foreground">{primaryCuenta.descripcion}</p>}
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(primaryCuenta.numero)}>
+                  {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+            )}
+
+            {/* Aviso */}
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+              ⚠️ No colocar nada en la descripción del pago.
+            </p>
+
+            {/* 2. Monto */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">2. Monto (COP)</Label>
               <div className="grid grid-cols-4 gap-2">
-                {presetAmounts.map((preset) => (
-                  <Button
-                    key={preset}
-                    variant={amount === String(preset) ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setAmount(String(preset))}
-                    className={cn("text-xs", amount === String(preset) && "bg-primary text-primary-foreground")}
-                  >
+                {PRESET_AMOUNTS.map((preset) => (
+                  <Button key={preset} variant={selectedPreset === preset ? 'default' : 'outline'} size="sm"
+                    onClick={() => { setSelectedPreset(preset); setAmount('') }}
+                    className={cn('text-xs', selectedPreset === preset && 'bg-primary text-primary-foreground')}>
                     ${preset / 1000}k
                   </Button>
                 ))}
               </div>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                <Input
-                  type="number"
-                  placeholder="Otro monto"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="pl-7"
-                  min="1"
-                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                <Input type="number" placeholder="Otro monto" value={amount}
+                  onChange={(e) => { setAmount(e.target.value); setSelectedPreset(null) }}
+                  className="pl-7" min="1000" />
               </div>
             </div>
 
+            {/* 3. Referencia */}
             <div className="space-y-2">
-              <Label>Referencia de pago (opcional)</Label>
-              <Input
-                placeholder="Número de transferencia / comprobante"
-                value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
-              />
+              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                3. Referencia / comprobante <span className="text-destructive">*</span>
+              </Label>
+              <Input placeholder="Número de transacción o comprobante"
+                value={referencia} onChange={(e) => setReferencia(e.target.value)} />
             </div>
 
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            {error && <p className="text-sm text-red-500 flex items-center gap-1"><AlertCircle className="w-4 h-4" />{error}</p>}
 
-            <Button
-              className="w-full bg-primary text-primary-foreground"
-              disabled={!amount || parseFloat(amount) <= 0 || isLoading}
-              onClick={handleRecharge}
-            >
-              {isLoading ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</>
-              ) : (
-                <><CreditCard className="w-4 h-4 mr-2" />Solicitar ${amount ? parseFloat(amount).toLocaleString('es-CO') : '0'}</>
-              )}
+            <Button className="w-full bg-primary text-primary-foreground" disabled={!canSubmit || isLoading} onClick={handleSubmit}>
+              {isLoading
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Enviando...</>
+                : <><CreditCard className="w-4 h-4 mr-2" />Solicitar {finalAmount >= 1000 ? `$${finalAmount.toLocaleString('es-CO')}` : ''}</>}
             </Button>
-
-            <p className="text-xs text-muted-foreground text-center">
-              La recarga se aprobará manualmente por un administrador
-            </p>
           </div>
         )}
       </DialogContent>

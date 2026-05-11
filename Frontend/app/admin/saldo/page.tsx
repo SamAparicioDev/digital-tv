@@ -284,12 +284,36 @@ export default function AdminSaldoPage() {
                               {s.wallet?.user?.email}
                             </p>
                             <div className="flex flex-wrap gap-2 mt-2 text-xs text-muted-foreground">
-                              <span>{s.referencia || 'Sin referencia'}</span>
-                              <span>•</span>
+                              {s.metodo_pago && (
+                                <span className="flex items-center gap-1">
+                                  {s.metodo_pago.emoji} {s.metodo_pago.nombre}
+                                </span>
+                              )}
+                              {s.referencia_pago && <><span>·</span><span className="font-mono">Ref: {s.referencia_pago}</span></>}
+                              <span>·</span>
                               <span>{new Date(s.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
                             {s.descripcion && (
                               <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{s.descripcion}</p>
+                            )}
+                            {/* Comprobante */}
+                            {s.comprobante_url ? (
+                              <a
+                                href={s.comprobante_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 inline-block"
+                                title="Ver comprobante"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={s.comprobante_url}
+                                  alt="Comprobante"
+                                  className="h-16 w-auto rounded border border-border object-cover hover:opacity-80 transition-opacity"
+                                />
+                              </a>
+                            ) : (
+                              <span className="text-xs text-muted-foreground/50 mt-1 block">Sin comprobante</span>
                             )}
                           </div>
                         </div>
