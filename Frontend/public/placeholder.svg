@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-labelledby="placeholderTitle placeholderDesc">
+  <title id="placeholderTitle">Placeholder image</title>
+  <desc id="placeholderDesc">Placeholder graphic for loading content.</desc>
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+  </defs>
+  <rect width="480" height="320" fill="url(#bgGradient)" />
+  <rect x="40" y="40" width="400" height="240" rx="24" fill="rgba(255,255,255,0.08)" />
+  <rect x="64" y="64" width="352" height="32" rx="8" fill="rgba(255,255,255,0.12)" />
+  <rect x="64" y="112" width="240" height="16" rx="6" fill="rgba(255,255,255,0.1)" />
+  <rect x="64" y="144" width="320" height="16" rx="6" fill="rgba(255,255,255,0.1)" />
+  <rect x="64" y="176" width="200" height="16" rx="6" fill="rgba(255,255,255,0.1)" />
+  <circle cx="360" cy="200" r="38" fill="rgba(255,255,255,0.08)" />
+</svg>

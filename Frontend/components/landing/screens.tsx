@@ -216,30 +216,7 @@ export function Screens({ onBuyClick }: ScreensProps) {
               </div>
             </Card>
           ))}
-        </StaggerContainer>
-
-        {/* Info Banner */}
-        <FadeIn delay={0.4}>
-          <div className="mt-12 p-6 rounded-xl bg-primary/10 border border-primary/20">
-            <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
-              <Users className="w-10 h-10 text-primary flex-shrink-0" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground mb-1">
-                  ¿Eres mayorista o revendedor?
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Contáctanos para obtener precios especiales y acceso a inventario prioritario
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 bg-transparent"
-              >
-                Contactar
-              </Button>
-            </div>
-          </div>
-        </FadeIn>
+        </StaggerContainer>      
       </div>
     </section>
   )

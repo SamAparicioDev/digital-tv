@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -62,10 +63,11 @@ export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
             className="flex items-center gap-2 group"
           >
             <div className="relative">
-              <img 
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-m2jddRXSFYlrahyQfPp0OEWhxRTKDl.png" 
-                alt="DigitalTv Logo" 
+              <img
+                src="/logo.png"
+                alt="DigitalTv Logo"
                 className="w-10 h-10 rounded-full transition-transform duration-300 group-hover:scale-110"
+                loading="eager"
               />
               <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>

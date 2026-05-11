@@ -1,5 +1,4 @@
-"use client"
-
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { FadeIn } from "@/components/animations/motion"
 import { Play, Sparkles, ChevronDown } from "lucide-react"
@@ -15,36 +14,22 @@ export function Hero({ onLoginClick }: HeroProps) {
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
     >
       <div className="absolute inset-0 z-0">
-        <img
-            src="/banner%20%20(1).png"
+        <div className="absolute inset-0">
+          <Image
+            src="/banner.png"
             alt="Banner de entretenimiento"
-            className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/30 to-background/50" />
-      </div>
-      {/* Background with Parallax Effect */}
-      <div className="absolute inset-0 z-0">
-        <div 
-          className="absolute inset-0 bg-gradient-to-b from-background via-background/80 to-background z-10"
-        />
-        <div 
-          className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50"
-        />
-        {/* Animated gradient orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl animate-pulse delay-1000" />
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/30 to-background/70" />
+        <div className="absolute inset-0 opacity-60 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05),transparent_25%)]" />
+        <div className="absolute top-16 left-8 w-52 h-52 rounded-full bg-primary/10 blur-3xl animate-pulse" />
+        <div className="absolute bottom-16 right-10 w-72 h-72 rounded-full bg-sky-500/10 blur-3xl animate-pulse delay-1000" />
       </div>
 
-      {/* Content */}
       <div className="container mx-auto px-4 relative z-20 text-center">
-        <FadeIn direction="up" delay={0.1}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              Las mejores ofertas en streaming
-            </span>
-          </div>
-        </FadeIn>
 
         <FadeIn direction="up" delay={0.2}>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-foreground mb-6 leading-tight text-balance">
@@ -74,7 +59,7 @@ export function Hero({ onLoginClick }: HeroProps) {
               </span>
               <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/80 to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </Button>
-            
+
             <Button
               variant="outline"
               size="lg"
@@ -107,7 +92,6 @@ export function Hero({ onLoginClick }: HeroProps) {
         </FadeIn>
       </div>
 
-      {/* Scroll Indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20">
         <FadeIn delay={1}>
           <button

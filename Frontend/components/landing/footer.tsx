@@ -1,5 +1,4 @@
-"use client"
-
+import Image from "next/image"
 import Link from "next/link"
 import { FadeIn } from "@/components/animations/motion"
 import { Instagram, Twitter, Facebook, Youtube, Mail, MapPin, Phone } from "lucide-react"
@@ -42,11 +41,13 @@ export function Footer() {
             {/* Brand */}
             <div className="col-span-2 md:col-span-2">
               <Link href="/" className="flex items-center gap-2 mb-4 group">
-                <div className="relative">
-                  <img 
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-m2jddRXSFYlrahyQfPp0OEWhxRTKDl.png" 
-                    alt="DigitalTv Logo" 
-                    className="w-10 h-10 rounded-full transition-transform duration-300 group-hover:scale-110"
+                <div className="relative w-10 h-10">
+                  <Image
+                    src="/logo.png"
+                    alt="DigitalTv Logo"
+                    fill
+                    className="rounded-full transition-transform duration-300 group-hover:scale-110"
+                    priority
                   />
                 </div>
                 <span className="text-xl font-bold text-foreground">
