@@ -181,6 +181,7 @@ export function Screens({ onBuyClick }: ScreensProps) {
                   </Button>
                 </div>
               </div>
+<<<<<<< HEAD
             </FadeIn>
           </>
         )}

@@ -203,9 +203,16 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
             <CardHeader className="text-center pb-2">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Play className="w-8 h-8 text-primary fill-primary" />
-                <span className="text-xl font-bold">
-                  Stream<span className="text-primary">Plus</span>
+            <div className="relative">
+              <img
+                src="/logo.png"
+                alt="DigitalTv Logo"
+                className="w-10 h-10 rounded-full transition-transform duration-300 group-hover:scale-110"
+                loading="eager"
+              />
+              <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            </div>                <span className="text-xl font-bold">
+                  Digital<span className="text-primary">Tv</span>
                 </span>
               </div>
               <CardTitle className="text-2xl">

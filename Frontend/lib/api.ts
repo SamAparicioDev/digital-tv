@@ -235,10 +235,21 @@ const removeToken = () => {
 
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
+function getCsrfToken(): string | undefined {
+  return document.cookie
+    .split('; ')
+    .find(row => row.startsWith('XSRF-TOKEN='))
+    ?.split('=')[1]
+}
+
 function headers(auth = true): HeadersInit {
   const h: HeadersInit = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+  }
+  const csrfToken = getCsrfToken()
+  if (csrfToken) {
+    h['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken)
   }
   if (auth) {
     const token = getToken()
@@ -267,9 +278,14 @@ export const api = {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   async login(email: string, password: string): Promise<AuthResponse> {
+    // Get CSRF cookie first
+    await fetch(`${API_BASE.replace('/api', '')}/sanctum/csrf-cookie`, {
+      credentials: 'include',
+    })
     const res = await fetch(`${API_BASE}/ingresar`, {
       method: 'POST',
       headers: headers(false),
+      credentials: 'include',
       body: JSON.stringify({ email, password }),
     })
     const data = await handleResponse<AuthResponse>(res)
@@ -285,9 +301,14 @@ export const api = {
     password: string,
     passwordConfirmation: string
   ): Promise<AuthResponse> {
+    // Get CSRF cookie first
+    await fetch(`${API_BASE.replace('/api', '')}/sanctum/csrf-cookie`, {
+      credentials: 'include',
+    })
     const res = await fetch(`${API_BASE}/registrar`, {
       method: 'POST',
       headers: headers(false),
+      credentials: 'include',
       body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
     })
     const data = await handleResponse<AuthResponse>(res)

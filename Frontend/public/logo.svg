@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="logoTitle logoDesc">
+  <title id="logoTitle">DigitalTv Logo</title>
+  <desc id="logoDesc">Logotipo de DigitalTv con un círculo degradado y letra D.</desc>
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="54" fill="url(#logoGradient)" />
+  <path d="M40 38 C40 30 48 24 56 24 H68 C76 24 84 30 84 38 V82 C84 90 76 96 68 96 H56 C48 96 40 90 40 82 V38 Z" fill="#111827" />
+  <path d="M54 42 H68 C74 42 78 46 78 52 V68 C78 74 74 78 68 78 H54 C48 78 44 74 44 68 V52 C44 46 48 42 54 42 Z" fill="#FDE68A" />
+</svg>

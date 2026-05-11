@@ -300,3 +300,15 @@ export function Parallax({ children, className, speed = 0.5 }: ParallaxProps) {
     </div>
   )
 }
+function App() {
+
+   console.log("Renderizando App");
+
+   return (
+      <div>
+         Hola
+      </div>
+   );
+}
+
+export default App;
