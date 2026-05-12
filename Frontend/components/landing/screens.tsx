@@ -5,31 +5,32 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FadeIn } from "@/components/animations/motion"
-import { Monitor, Users, Check, Wifi, Loader2, Tv } from "lucide-react"
+import { Monitor, Check, Wifi, Loader2, Tv, User, Users as UsersIcon, Tag } from "lucide-react"
 import { cn, formatCOP } from "@/lib/utils"
-import { api, type Oferta } from "@/lib/api"
+import { api, type Oferta, type Descuento } from "@/lib/api"
+import { calcularDescuento } from "@/lib/discount"
+import { useAuth } from "@/contexts/auth-context"
 
 interface ScreensProps {
   onBuyClick: () => void
 }
 
 export function Screens({ onBuyClick }: ScreensProps) {
+  const { activeRole } = useAuth()
   const [ofertas, setOfertas] = useState<Oferta[]>([])
+  const [descuentos, setDescuentos] = useState<Descuento[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState("all")
 
   useEffect(() => {
-    api.getOfertas()
-      .then(data => setOfertas(data.filter(o => o.is_active && o.stock > 0)))
-      .catch(() => {})
-      .finally(() => setIsLoading(false))
+    Promise.all([
+      api.getOfertas().then(data => setOfertas(data.filter(o => o.is_active && o.stock > 0))).catch(() => {}),
+      api.getDescuentos().then(setDescuentos).catch(() => {}),
+    ]).finally(() => setIsLoading(false))
   }, [])
 
-  // Servicios únicos para los filtros
   const uniqueServices = Array.from(
-    new Map(
-      ofertas.flatMap(o => o.servicios).map(s => [s.id, s])
-    ).values()
+    new Map(ofertas.flatMap(o => o.servicios).map(s => [s.id, s])).values()
   )
 
   const filtered = filter === "all"
@@ -66,8 +67,7 @@ export function Screens({ onBuyClick }: ScreensProps) {
             {uniqueServices.length > 0 && (
               <FadeIn delay={0.1}>
                 <div className="flex flex-wrap items-center justify-center gap-2 mb-10">
-                  <Button
-                    variant={filter === "all" ? "default" : "outline"} size="sm"
+                  <Button variant={filter === "all" ? "default" : "outline"} size="sm"
                     onClick={() => setFilter("all")}
                     className={cn(filter === "all" ? "bg-primary text-primary-foreground" : "hover:border-primary hover:text-primary")}>
                     Todas
@@ -97,11 +97,25 @@ export function Screens({ onBuyClick }: ScreensProps) {
                   const perfiles = oferta.servicios[0]?.pivot?.numero_perfiles ?? 0
                   const dias = oferta.servicios[0]?.pivot?.duracion_dias ?? 30
 
+                  // Calcular descuento aplicable
+                  const desc = calcularDescuento(oferta, descuentos, activeRole?.id ?? null)
+                  const tieneDescuento = desc.descuento !== null && desc.precioFinal < desc.precioOriginal
+
                   return (
                     <FadeIn key={oferta.id} delay={i * 0.08} direction="up">
                       <Card className="relative overflow-hidden bg-card border-border p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-primary/50 group">
                         {/* Color bar */}
                         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
+
+                        {/* Discount badge */}
+                        {tieneDescuento && (
+                          <div className="absolute top-2 right-2 z-10">
+                            <Badge className="bg-red-500 text-white border-none shadow-lg">
+                              <Tag className="w-3 h-3 mr-1" />
+                              -{desc.porcentajeAhorro}%
+                            </Badge>
+                          </div>
+                        )}
 
                         {/* Header */}
                         <div className="flex items-start justify-between mb-4 mt-1">
@@ -113,29 +127,46 @@ export function Screens({ onBuyClick }: ScreensProps) {
                             </div>
                             <div>
                               <h3 className="font-bold text-foreground">{nombre}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {oferta.cuenta_completa ? 'Cuenta completa' : `${perfiles} perfil${perfiles !== 1 ? 'es' : ''}`}
-                              </p>
+                              {/* Tipo de venta — bien clarito */}
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs mt-1",
+                                  oferta.cuenta_completa
+                                    ? "text-blue-400 border-blue-400/30 bg-blue-500/10"
+                                    : "text-purple-400 border-purple-400/30 bg-purple-500/10"
+                                )}
+                              >
+                                {oferta.cuenta_completa
+                                  ? <><UsersIcon className="w-3 h-3 mr-1" />Cuenta completa</>
+                                  : <><User className="w-3 h-3 mr-1" />1 perfil individual</>}
+                              </Badge>
                             </div>
                           </div>
-                          <Badge variant="outline" className={cn(
-                            "text-xs",
-                            oferta.stock > 5 ? "text-green-500 border-green-500/30" :
-                            oferta.stock > 0 ? "text-yellow-500 border-yellow-500/30 animate-pulse" :
-                            "text-red-500 border-red-500/30"
-                          )}>
-                            <Wifi className="w-3 h-3 mr-1" />
-                            {oferta.stock > 0 ? `${oferta.stock} disponibles` : 'Agotado'}
-                          </Badge>
+                          {!tieneDescuento && (
+                            <Badge variant="outline" className={cn(
+                              "text-xs",
+                              oferta.stock > 5 ? "text-green-500 border-green-500/30" :
+                              oferta.stock > 0 ? "text-yellow-500 border-yellow-500/30 animate-pulse" :
+                              "text-red-500 border-red-500/30"
+                            )}>
+                              <Wifi className="w-3 h-3 mr-1" />
+                              {oferta.stock > 0 ? `${oferta.stock} disp.` : 'Agotado'}
+                            </Badge>
+                          )}
                         </div>
 
                         {/* Features */}
                         <ul className="space-y-2 mb-6">
                           {[
-                            oferta.cuenta_completa ? 'Acceso completo' : `${perfiles} perfil${perfiles !== 1 ? 'es' : ''} asignado${perfiles !== 1 ? 's' : ''}`,
+                            oferta.cuenta_completa
+                              ? 'Acceso total: email + contraseña propios'
+                              : `Perfil personal con PIN — comparte la cuenta con otros usuarios`,
                             `${dias} días de vigencia`,
                             oferta.garantia_dias > 0 ? `${oferta.garantia_dias} días de garantía` : null,
-                            oferta.cuenta_completa ? 'Email y contraseña propios' : 'Perfil personalizado',
+                            oferta.cuenta_completa
+                              ? `Hasta ${Math.max(perfiles, 4)} perfiles dentro de la cuenta`
+                              : 'No requiere instalación, listo para usar',
                           ].filter(Boolean).map((f, j) => (
                             <li key={j} className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Check className="w-4 h-4 text-primary flex-shrink-0" />
@@ -147,7 +178,16 @@ export function Screens({ onBuyClick }: ScreensProps) {
                         {/* Price & Action */}
                         <div className="flex items-center justify-between pt-4 border-t border-border">
                           <div>
-                            <span className="text-2xl font-bold text-foreground">{formatCOP(oferta.precio)}</span>
+                            {tieneDescuento ? (
+                              <>
+                                <span className="text-xs text-muted-foreground line-through block">
+                                  {formatCOP(desc.precioOriginal)}
+                                </span>
+                                <span className="text-2xl font-bold text-primary">{formatCOP(desc.precioFinal)}</span>
+                              </>
+                            ) : (
+                              <span className="text-2xl font-bold text-foreground">{formatCOP(oferta.precio)}</span>
+                            )}
                             <span className="text-sm text-muted-foreground">/{dias}d</span>
                           </div>
                           <Button
@@ -164,24 +204,6 @@ export function Screens({ onBuyClick }: ScreensProps) {
                 })}
               </div>
             )}
-
-            {/* Info Banner */}
-            <FadeIn delay={0.4}>
-              <div className="mt-12 p-6 rounded-xl bg-primary/10 border border-primary/20">
-                <div className="flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
-                  <Users className="w-10 h-10 text-primary flex-shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-foreground mb-1">¿Eres mayorista o revendedor?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Contáctanos para obtener precios especiales y acceso a inventario prioritario
-                    </p>
-                  </div>
-                  <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 bg-transparent">
-                    Contactar
-                  </Button>
-                </div>
-              </div>
-            </FadeIn>
           </>
         )}
       </div>

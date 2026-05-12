@@ -224,6 +224,7 @@ export default function AdminCuentasPage() {
   // ── Stats ─────────────────────────────────────────────────────────────────
 
   const totalCuentas = cuentas.length
+  const cuentasCompletasLibres = cuentas.filter(c => c.perfiles_total === 0 && c.disponible_como_completa).length
   const totalPerfiles = cuentas.reduce((s, c) => s + c.perfiles_total, 0)
   const perfilesDisponibles = cuentas.reduce((s, c) => s + c.perfiles_disponibles, 0)
   const perfilesAsignados = totalPerfiles - perfilesDisponibles
@@ -251,9 +252,9 @@ export default function AdminCuentasPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Total cuentas', value: totalCuentas, icon: KeyRound, color: 'text-primary', bg: 'bg-primary/10' },
-          { label: 'Total perfiles', value: totalPerfiles, icon: Monitor, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { label: 'Disponibles', value: perfilesDisponibles, icon: Check, color: 'text-green-500', bg: 'bg-green-500/10' },
-          { label: 'Asignados', value: perfilesAsignados, icon: User2, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+          { label: 'Completas libres', value: cuentasCompletasLibres, icon: Check, color: 'text-green-500', bg: 'bg-green-500/10' },
+          { label: 'Perfiles libres', value: perfilesDisponibles, icon: Monitor, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { label: 'Perfiles asignados', value: perfilesAsignados, icon: User2, color: 'text-orange-500', bg: 'bg-orange-500/10' },
         ].map((s, i) => (
           <FadeIn key={s.label} delay={i * 0.08}>
             <Card className="bg-card border-border">
@@ -335,11 +336,25 @@ export default function AdminCuentasPage() {
                       </div>
 
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {/* Perfiles badge */}
-                        <div className="text-center px-3 py-1 rounded-lg bg-secondary/50 text-xs">
-                          <span className="text-green-500 font-bold">{cuenta.perfiles_disponibles}</span>
-                          <span className="text-muted-foreground">/{cuenta.perfiles_total} libres</span>
-                        </div>
+                        {/* Disponibilidad badge */}
+                        {cuenta.perfiles_total === 0 ? (
+                          // Cuenta completa (sin perfiles) — muestra disponibilidad de la cuenta
+                          <Badge variant="outline" className={cn("text-xs",
+                            cuenta.disponible_como_completa
+                              ? 'text-green-500 border-green-500/30 bg-green-500/10'
+                              : 'text-orange-500 border-orange-500/30 bg-orange-500/10'
+                          )}>
+                            {cuenta.disponible_como_completa ? 'Disponible' : 'Asignada'}
+                          </Badge>
+                        ) : (
+                          // Cuenta con perfiles — muestra cuántos perfiles libres
+                          <div className="text-center px-3 py-1 rounded-lg bg-secondary/50 text-xs">
+                            <span className={cn("font-bold", cuenta.perfiles_disponibles > 0 ? "text-green-500" : "text-orange-500")}>
+                              {cuenta.perfiles_disponibles}
+                            </span>
+                            <span className="text-muted-foreground">/{cuenta.perfiles_total} libres</span>
+                          </div>
+                        )}
                         {cuenta.vigencia_hasta && (
                           <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
                             <Calendar className="w-3 h-3" />
@@ -370,9 +385,14 @@ export default function AdminCuentasPage() {
                         </div>
 
                         {cuenta.perfiles.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            Sin perfiles. Esta cuenta se vende completa.
-                          </p>
+                          <div className={cn("rounded-lg border p-4 text-center text-sm",
+                            cuenta.disponible_como_completa
+                              ? "border-green-500/30 bg-green-500/5 text-green-400"
+                              : "border-orange-500/30 bg-orange-500/5 text-orange-400"
+                          )}>
+                            <p className="font-medium">{cuenta.disponible_como_completa ? '✓ Cuenta disponible como cuenta completa' : '⚡ Cuenta asignada a un usuario'}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Puedes agregar perfiles para venderlos individualmente</p>
+                          </div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                             {cuenta.perfiles.map((p) => (

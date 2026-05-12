@@ -14,6 +14,7 @@ function isAdminRole(role: Role | null): boolean {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
+  isLoggingOut: boolean
   isRoleResolved: boolean
   isAuthenticated: boolean
   activeRole: Role | null
@@ -31,6 +32,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [activeRole, setActiveRoleState] = useState<Role | null>(null)
   const [isRoleResolved, setIsRoleResolved] = useState(false)
 
@@ -91,10 +93,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    await api.logout()
-    setUser(null)
-    setActiveRoleState(null)
-    localStorage.removeItem('active_role')
+    setIsLoggingOut(true)
+    try {
+      await api.logout()
+    } finally {
+      setUser(null)
+      setActiveRoleState(null)
+      localStorage.removeItem('active_role')
+      setIsLoggingOut(false)
+    }
   }
 
   const updateBalance = (newBalance: number) => {
@@ -110,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading,
+        isLoggingOut,
         isRoleResolved,
         isAuthenticated: !!user,
         activeRole,

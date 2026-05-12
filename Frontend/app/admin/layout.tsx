@@ -16,7 +16,6 @@ import {
   BarChart2,
   Menu,
   X,
-  Bell,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -26,7 +25,10 @@ import {
   Home,
   KeyRound,
   Monitor,
+  Sparkles,
+  BookOpen,
 } from "lucide-react"
+import { NotificationPanel } from "@/components/notifications/notification-panel"
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -35,6 +37,8 @@ const navItems = [
   { label: "Cuentas", href: "/admin/cuentas", icon: KeyRound },
   { label: "Ofertas", href: "/admin/pantallas", icon: Monitor },
   { label: "Servicios", href: "/admin/estrenos", icon: Film },
+  { label: "Estrenos", href: "/admin/releases", icon: Sparkles },
+  { label: "Tutoriales", href: "/admin/tutoriales", icon: BookOpen },
   { label: "Promociones", href: "/admin/promociones", icon: Percent },
   { label: "Reportes", href: "/admin/reportes", icon: BarChart2 },
 ]
@@ -205,10 +209,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-            </Button>
+            <NotificationPanel />
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <span className="text-sm font-semibold text-primary-foreground">
                 {user.name.charAt(0).toUpperCase()}

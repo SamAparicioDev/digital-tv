@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Header } from "./header"
 import { Hero } from "./hero"
@@ -15,6 +16,7 @@ import { ProfilePanel } from "@/components/user/profile-panel"
 
 export default function HomeClient() {
   const { isAuthenticated, isLoading } = useAuth()
+  const router = useRouter()
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
@@ -25,7 +27,7 @@ export default function HomeClient() {
 
   const handleBuyClick = () => {
     if (isAuthenticated) {
-      openProfile()
+      router.push('/tienda')
     } else {
       openAuth()
     }

@@ -37,8 +37,10 @@ import { Header } from "@/components/landing/header";
 import { Footer } from "@/components/landing/footer";
 import { WhatsAppButton } from "@/components/landing/whatsapp-button";
 import { useAuth } from "@/contexts/auth-context";
-import { api, type Oferta, type Compra } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { api, type Oferta, type Compra, type DatosAcceso, type Descuento } from "@/lib/api";
+import { cn, formatCOP } from "@/lib/utils";
+import { calcularDescuento } from "@/lib/discount";
+import { Tag, User, Users as UsersIcon } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,7 +61,10 @@ function ofertaDuration(oferta: Oferta): string {
 }
 
 function ofertaScreens(oferta: Oferta): number {
-  return oferta.servicios[0]?.pivot?.numero_perfiles ?? 1
+  const pivot = oferta.servicios[0]?.pivot?.numero_perfiles ?? 1
+  // Cuenta completa siempre da acceso a múltiples perfiles internos
+  // (Netflix=4, Disney+=7, etc.) — mínimo 4 como default sensato
+  return oferta.cuenta_completa ? Math.max(pivot, 4) : pivot
 }
 
 function ofertaFeatures(oferta: Oferta): string[] {
@@ -82,9 +87,10 @@ function ofertaImage(oferta: Oferta): string {
 const LoadingCard = () => null;
 
 export default function StorePage() {
-  const { user, isAuthenticated, refreshUser } = useAuth();
+  const { user, isAuthenticated, activeRole, refreshUser } = useAuth();
 
   const [ofertas, setOfertas] = useState<Oferta[]>([]);
+  const [descuentos, setDescuentos] = useState<Descuento[]>([])
   const [isLoadingOfertas, setIsLoadingOfertas] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -98,15 +104,18 @@ export default function StorePage() {
   const [purchaseSuccess, setPurchaseSuccess] = useState<Compra | null>(null);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
-  // Load real offers from backend
+  // Load offers + discounts
   useEffect(() => {
     if (!isAuthenticated) { setIsLoadingOfertas(false); return }
     setIsLoadingOfertas(true)
-    api.getOfertas()
-      .then((data) => { setOfertas(data.filter((o) => o.is_active && o.stock > 0)) })
-      .catch((err) => { setLoadError(err.message ?? 'Error cargando ofertas') })
-      .finally(() => setIsLoadingOfertas(false))
+    Promise.all([
+      api.getOfertas().then((data) => setOfertas(data.filter((o) => o.is_active && o.stock > 0))).catch((err) => { setLoadError(err.message ?? 'Error cargando ofertas') }),
+      api.getDescuentos().then(setDescuentos).catch(() => {}),
+    ]).finally(() => setIsLoadingOfertas(false))
   }, [isAuthenticated])
+
+  // Calcular precio con descuento por oferta (memoizado por id)
+  const getPriceInfo = (oferta: Oferta) => calcularDescuento(oferta, descuentos, activeRole?.id ?? null)
 
   // Derive categories from backend data
   const categories = ['Todos', ...Array.from(new Set(ofertas.flatMap((o) => o.servicios.map((s) => s.name))))]
@@ -120,24 +129,30 @@ export default function StorePage() {
       return matchesSearch && matchesCategory
     })
     .sort((a, b) => {
+      const ap = getPriceInfo(a).precioFinal
+      const bp = getPriceInfo(b).precioFinal
       switch (sortBy) {
-        case 'price-low': return a.precio - b.precio
-        case 'price-high': return b.precio - a.precio
+        case 'price-low': return ap - bp
+        case 'price-high': return bp - ap
         default: return b.stock - a.stock
       }
     })
 
   const handlePurchase = async (oferta: Oferta) => {
     if (!isAuthenticated) { setShowAuthPrompt(true); return }
-    if (!user || user.balance < oferta.precio) {
-      setPurchaseError('Saldo insuficiente. Por favor recarga tu saldo primero.')
+    const price = getPriceInfo(oferta).precioFinal
+    if (!user || user.balance < price) {
+      setPurchaseError('Saldo insuficiente. Recarga tu saldo antes de comprar.')
       return
     }
     setIsPurchasing(true)
     setPurchaseError(null)
     try {
       const result = await api.createCompra(oferta.id)
-      await refreshUser()             // actualiza saldo en contexto
+      await refreshUser()
+      setOfertas((prev) => prev.map((o) =>
+        o.id === oferta.id ? { ...o, stock: Math.max(0, o.stock - 1) } : o
+      ).filter((o) => o.stock > 0))
       setPurchaseSuccess(result.compra)
       setSelectedOferta(null)
     } catch (error) {
@@ -172,7 +187,7 @@ export default function StorePage() {
                   <Wallet className="w-4 h-4 text-primary" />
                   <span className="text-foreground">Tu saldo: </span>
                   <span className="font-bold text-primary">
-                    ${user.balance.toLocaleString('es-CO')}
+                    {formatCOP(user.balance)}
                   </span>
                 </div>
               )}
@@ -254,7 +269,10 @@ export default function StorePage() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   <AnimatePresence mode="popLayout">
-                    {filteredOfertas.map((oferta, index) => (
+                    {filteredOfertas.map((oferta, index) => {
+                      const priceInfo = getPriceInfo(oferta)
+                      const tieneDescuento = priceInfo.descuento !== null && priceInfo.precioFinal < priceInfo.precioOriginal
+                      return (
                       <motion.div
                         key={oferta.id}
                         layout
@@ -278,15 +296,24 @@ export default function StorePage() {
                             ) : (
                               <Monitor className="w-16 h-16 text-muted-foreground/40" />
                             )}
-                            {oferta.cuenta_completa && (
-                              <Badge className="absolute top-3 left-3 bg-primary text-primary-foreground">
-                                <Zap className="w-3 h-3 mr-1" />
-                                Cuenta completa
+                            {/* Tipo de venta — clarito en la esquina superior izquierda */}
+                            <Badge className={cn(
+                              "absolute top-3 left-3 border-none",
+                              oferta.cuenta_completa ? "bg-blue-500 text-white" : "bg-purple-500 text-white"
+                            )}>
+                              {oferta.cuenta_completa
+                                ? <><UsersIcon className="w-3 h-3 mr-1" />Cuenta completa</>
+                                : <><User className="w-3 h-3 mr-1" />1 perfil</>}
+                            </Badge>
+                            {/* Discount badge */}
+                            {tieneDescuento && (
+                              <Badge className="absolute top-3 right-3 bg-red-500 text-white border-none">
+                                <Tag className="w-3 h-3 mr-1" />-{priceInfo.porcentajeAhorro}%
                               </Badge>
                             )}
-                            {oferta.stock <= 5 && (
-                              <Badge className="absolute top-3 right-3 bg-red-500 text-white">
-                                ¡Últimas!
+                            {!tieneDescuento && oferta.stock <= 5 && (
+                              <Badge className="absolute top-3 right-3 bg-orange-500 text-white">
+                                ¡Últimas {oferta.stock}!
                               </Badge>
                             )}
                           </div>
@@ -302,18 +329,27 @@ export default function StorePage() {
                                 {ofertaDuration(oferta)}
                               </span>
                               <span className="flex items-center gap-1">
-                                <Monitor className="w-4 h-4" />
-                                {ofertaScreens(oferta)} pantalla{ofertaScreens(oferta) !== 1 ? 's' : ''}
+                                {oferta.cuenta_completa
+                                  ? <><UsersIcon className="w-4 h-4" />{ofertaScreens(oferta)} perfiles incluidos</>
+                                  : <><User className="w-4 h-4" />Perfil personal</>}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-xl font-bold text-primary">
-                                ${oferta.precio.toLocaleString('es-CO')}
-                              </span>
+                              <div>
+                                {tieneDescuento && (
+                                  <span className="text-xs text-muted-foreground line-through block">
+                                    {formatCOP(priceInfo.precioOriginal)}
+                                  </span>
+                                )}
+                                <span className="text-xl font-bold text-primary">
+                                  {formatCOP(priceInfo.precioFinal)}
+                                </span>
+                              </div>
                               <Button
                                 size="sm"
-                                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                                onClick={(e) => { e.stopPropagation(); handlePurchase(oferta) }}
+                                disabled={oferta.stock === 0}
+                                className="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                onClick={(e) => { e.stopPropagation(); setSelectedOferta(oferta); setPurchaseError(null) }}
                               >
                                 <ShoppingCart className="w-4 h-4" />
                               </Button>
@@ -321,7 +357,8 @@ export default function StorePage() {
                           </CardContent>
                         </Card>
                       </motion.div>
-                    ))}
+                      )
+                    })}
                   </AnimatePresence>
                 </div>
               </>
@@ -387,51 +424,99 @@ export default function StorePage() {
                   Stock disponible: {selectedOferta.stock} unidades
                 </p>
 
-                {/* Balance */}
-                {isAuthenticated && user && (
-                  <div className={cn(
-                    'p-3 rounded-lg border',
-                    user.balance >= selectedOferta.precio
-                      ? 'bg-green-500/10 border-green-500/30'
-                      : 'bg-red-500/10 border-red-500/30'
-                  )}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Tu saldo:</span>
-                      <span className={cn('font-semibold', user.balance >= selectedOferta.precio ? 'text-green-500' : 'text-red-500')}>
-                        ${user.balance.toLocaleString('es-CO')}
-                      </span>
-                    </div>
-                    {user.balance < selectedOferta.precio && (
-                      <p className="text-xs text-red-500 mt-1">
-                        Te faltan ${(selectedOferta.precio - user.balance).toLocaleString('es-CO')} para esta compra
-                      </p>
-                    )}
+                {/* Tipo de venta destacado */}
+                <div className={cn(
+                  "p-3 rounded-lg border-2",
+                  selectedOferta.cuenta_completa
+                    ? "border-blue-500/40 bg-blue-500/10"
+                    : "border-purple-500/40 bg-purple-500/10"
+                )}>
+                  <div className="flex items-center gap-2">
+                    {selectedOferta.cuenta_completa
+                      ? <UsersIcon className="w-5 h-5 text-blue-400" />
+                      : <User className="w-5 h-5 text-purple-400" />}
+                    <p className={cn("font-semibold", selectedOferta.cuenta_completa ? "text-blue-400" : "text-purple-400")}>
+                      {selectedOferta.cuenta_completa ? 'Acceso a la cuenta completa' : 'Acceso a 1 perfil individual'}
+                    </p>
                   </div>
-                )}
-
-                {purchaseError && (
-                  <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <p className="text-sm text-red-500">{purchaseError}</p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-4 border-t border-border">
-                  <span className="text-2xl font-bold text-primary">
-                    ${selectedOferta.precio.toLocaleString('es-CO')}
-                  </span>
-                  <Button
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => handlePurchase(selectedOferta)}
-                    disabled={isPurchasing || (!!user && user.balance < selectedOferta.precio)}
-                  >
-                    {isPurchasing ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Procesando...</>
-                    ) : (
-                      <><ShoppingCart className="w-4 h-4 mr-2" />Comprar ahora</>
-                    )}
-                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {selectedOferta.cuenta_completa
+                      ? 'Recibirás email + contraseña. Puedes usar todos los perfiles internos.'
+                      : 'Recibirás un perfil con su PIN. La cuenta puede ser compartida.'}
+                  </p>
                 </div>
+
+                {/* Stock */}
+                <p className="text-xs text-muted-foreground">
+                  Stock disponible: {selectedOferta.stock} unidades
+                </p>
+
+                {/* Balance */}
+                {(() => {
+                  const priceInfo = getPriceInfo(selectedOferta)
+                  const tieneDescuento = priceInfo.descuento !== null && priceInfo.precioFinal < priceInfo.precioOriginal
+                  const finalPrice = priceInfo.precioFinal
+                  return (
+                    <>
+                      {isAuthenticated && user && (
+                        <div className={cn(
+                          'p-3 rounded-lg border',
+                          user.balance >= finalPrice
+                            ? 'bg-green-500/10 border-green-500/30'
+                            : 'bg-red-500/10 border-red-500/30'
+                        )}>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Tu saldo:</span>
+                            <span className={cn('font-semibold', user.balance >= finalPrice ? 'text-green-500' : 'text-red-500')}>
+                              {formatCOP(user.balance)}
+                            </span>
+                          </div>
+                          {user.balance < finalPrice && (
+                            <p className="text-xs text-red-500 mt-1">
+                              Te faltan {formatCOP(finalPrice - user.balance)} para esta compra
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {purchaseError && (
+                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                          <p className="text-sm text-red-500">{purchaseError}</p>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-4 border-t border-border">
+                        <div>
+                          {tieneDescuento && (
+                            <span className="text-sm text-muted-foreground line-through block">
+                              {formatCOP(priceInfo.precioOriginal)}
+                            </span>
+                          )}
+                          <span className="text-2xl font-bold text-primary">
+                            {formatCOP(finalPrice)}
+                          </span>
+                          {tieneDescuento && (
+                            <Badge className="ml-2 bg-red-500 text-white border-none">
+                              <Tag className="w-3 h-3 mr-1" />Ahorras {formatCOP(priceInfo.ahorro)}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          className="bg-primary text-primary-foreground hover:bg-primary/90"
+                          onClick={() => handlePurchase(selectedOferta)}
+                          disabled={isPurchasing || (!!user && user.balance < finalPrice)}
+                        >
+                          {isPurchasing ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Procesando...</>
+                          ) : (
+                            <><ShoppingCart className="w-4 h-4 mr-2" />Comprar ahora</>
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )
+                })()}
               </div>
             </>
           )}
@@ -466,6 +551,16 @@ export default function StorePage() {
 
 // ─── Purchase Success Modal ───────────────────────────────────────────────────
 
+function CopyBtn({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }
+  return (
+    <button onClick={copy} className="ml-2 text-primary hover:text-primary/80 transition-colors flex-shrink-0">
+      {copied ? <Check className="w-4 h-4" /> : <span className="text-xs underline">Copiar</span>}
+    </button>
+  )
+}
+
 function PurchaseSuccessModal({ compra, onClose }: { compra: Compra | null; onClose: () => void }) {
   if (!compra) return null
 
@@ -473,27 +568,27 @@ function PurchaseSuccessModal({ compra, onClose }: { compra: Compra | null; onCl
     ? compra.oferta.servicios.map((s) => s.name).join(' + ')
     : `Oferta #${compra.oferta_id}`
 
+  let creds: DatosAcceso | null = null
+  try { if (compra.datos_acceso) creds = JSON.parse(compra.datos_acceso) } catch { /* ignore */ }
+
   return (
     <Dialog open={!!compra} onOpenChange={onClose}>
       <DialogContent className="bg-card border-border max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-              <PackageCheck className="w-6 h-6 text-primary" />
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+              <PackageCheck className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <DialogTitle className="text-primary">Compra solicitada</DialogTitle>
+              <DialogTitle className="text-xl text-primary">¡Compra exitosa!</DialogTitle>
               <DialogDescription>{serviceName}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="p-4 rounded-lg bg-secondary/50 space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Referencia</span>
-              <span className="font-mono">#{compra.id}</span>
-            </div>
+        <div className="space-y-4 py-2">
+          {/* Resumen */}
+          <div className="p-4 rounded-lg bg-secondary/50 space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Precio pagado</span>
               <span className="font-semibold text-primary">
@@ -502,18 +597,73 @@ function PurchaseSuccessModal({ compra, onClose }: { compra: Compra | null; onCl
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Estado</span>
-              <span className="capitalize font-medium text-yellow-500">{compra.estado}</span>
+              <span className="font-medium text-green-500">Aprobada ✓</span>
             </div>
           </div>
 
-          <p className="text-sm text-muted-foreground text-center">
-            Tu compra está <strong>pendiente de aprobación</strong> por un administrador.
-            Recibirás los accesos una vez sea aprobada.
+          {/* Credenciales */}
+          {creds ? (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <p className="text-sm font-semibold text-primary flex items-center gap-2">
+                <Check className="w-4 h-4" /> Tus credenciales de acceso
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Email</span>
+                  <div className="flex items-center font-mono text-foreground">
+                    <span>{creds.email}</span>
+                    <CopyBtn text={creds.email} />
+                  </div>
+                </div>
+                {creds.tipo === 'cuenta_completa' && creds.password && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Contraseña</span>
+                    <div className="flex items-center font-mono text-foreground">
+                      <span>{creds.password}</span>
+                      <CopyBtn text={creds.password} />
+                    </div>
+                  </div>
+                )}
+                {creds.tipo === 'perfil' && (
+                  <>
+                    {creds.perfil_nombre && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Perfil</span>
+                        <span className="font-mono text-foreground">{creds.perfil_nombre}</span>
+                      </div>
+                    )}
+                    {creds.perfil_pin && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">PIN</span>
+                        <div className="flex items-center font-mono text-foreground">
+                          <span>{creds.perfil_pin}</span>
+                          <CopyBtn text={creds.perfil_pin} />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+                <div className="flex items-center justify-between pt-1 border-t border-border">
+                  <span className="text-muted-foreground">Vigencia hasta</span>
+                  <span className="text-foreground">
+                    {new Date(creds.vigencia_hasta).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-sm text-yellow-600 dark:text-yellow-400 text-center">
+              Las credenciales estarán disponibles en <strong>Mis Cuentas</strong> en breve.
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground text-center">
+            Puedes ver tus credenciales en cualquier momento en <strong>Mis Cuentas</strong>
           </p>
         </div>
 
         <Button onClick={onClose} className="w-full bg-primary text-primary-foreground">
-          Entendido
+          ¡Entendido!
         </Button>
       </DialogContent>
     </Dialog>

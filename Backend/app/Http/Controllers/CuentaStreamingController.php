@@ -113,27 +113,31 @@ class CuentaStreamingController extends Controller
         $perfilesTotal     = $c->perfiles->count();
         $perfilesAsignados = $c->perfiles->filter(fn($p) => $p->credencial !== null)->count();
 
-        // Para cuenta_completa la credencial cuelga directo de la cuenta
+        // credencial con perfil_id IS NULL = cuenta vendida como un todo
         $cuentaAsignada = $c->credencial !== null;
 
+        // Disponible como cuenta completa: activa + sin asignación de cuenta completa
+        $disponibleComoCompleta = $c->is_active && !$cuentaAsignada;
+
         return [
-            'id'                   => $c->id,
-            'streaming_service_id' => $c->streaming_service_id,
-            'streaming_service'    => $c->streamingService ? [
+            'id'                      => $c->id,
+            'streaming_service_id'    => $c->streaming_service_id,
+            'streaming_service'       => $c->streamingService ? [
                 'id'            => $c->streamingService->id,
                 'name'          => $c->streamingService->name,
                 'primary_color' => $c->streamingService->primary_color,
                 'logo_url'      => $c->streamingService->logo_url,
             ] : null,
-            'email'                => $c->email,
-            'password'             => $c->password,
-            'descripcion'          => $c->descripcion,
-            'vigencia_hasta'       => $c->vigencia_hasta,
-            'is_active'            => $c->is_active,
-            'cuenta_asignada'      => $cuentaAsignada,
-            'perfiles_total'       => $perfilesTotal,
-            'perfiles_disponibles' => $perfilesTotal - $perfilesAsignados,
-            'perfiles'             => $c->perfiles->map(fn($p) => [
+            'email'                   => $c->email,
+            'password'                => $c->password,
+            'descripcion'             => $c->descripcion,
+            'vigencia_hasta'          => $c->vigencia_hasta,
+            'is_active'               => $c->is_active,
+            'cuenta_asignada'         => $cuentaAsignada,
+            'disponible_como_completa'=> $disponibleComoCompleta,
+            'perfiles_total'          => $perfilesTotal,
+            'perfiles_disponibles'    => $perfilesTotal - $perfilesAsignados,
+            'perfiles'                => $c->perfiles->map(fn($p) => [
                 'id'         => $p->id,
                 'nombre'     => $p->nombre,
                 'pin'        => $p->pin,

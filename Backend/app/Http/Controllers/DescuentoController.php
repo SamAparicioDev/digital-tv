@@ -6,6 +6,7 @@ use App\Models\Descuento;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class DescuentoController extends Controller
 {
@@ -16,7 +17,8 @@ class DescuentoController extends Controller
 
     public function index()
     {
-        return response()->json(Descuento::with($this->with())->get());
+        $data = Cache::remember('descuentos', 120, fn() => Descuento::with($this->with())->get());
+        return response()->json($data);
     }
 
     public function show(Descuento $descuento)
@@ -70,6 +72,7 @@ class DescuentoController extends Controller
             }
 
             DB::commit();
+            Cache::forget('descuentos');
             return response()->json($descuento->load($this->with()), 201);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -120,6 +123,7 @@ class DescuentoController extends Controller
             }
 
             DB::commit();
+            Cache::forget('descuentos');
             return response()->json($descuento->load($this->with()));
         } catch (\Exception $e) {
             DB::rollBack();
@@ -130,6 +134,7 @@ class DescuentoController extends Controller
     public function destroy(Descuento $descuento)
     {
         $descuento->delete();
+        Cache::forget('descuentos');
         return response()->json(['message' => 'Descuento eliminado correctamente'], 200);
     }
 }

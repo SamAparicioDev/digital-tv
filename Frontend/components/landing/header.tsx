@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { NotificationPanel } from "@/components/notifications/notification-panel"
 
 interface HeaderProps {
   onLoginClick: () => void
@@ -45,6 +46,8 @@ export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
 
   const handleLogout = async () => {
     await logout()
+    // Reload completo para resetear estado de Next.js / React
+    window.location.href = '/'
   }
 
   return (
@@ -96,6 +99,9 @@ export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
           <div className="flex items-center gap-3">
             {isAuthenticated && user ? (
               <>
+                {/* Notificaciones */}
+                <NotificationPanel />
+
                 {/* Menú / Panel button */}
                 <Button
                   onClick={() => router.push(isAdmin ? '/admin' : '/dashboard')}

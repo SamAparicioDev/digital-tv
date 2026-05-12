@@ -109,28 +109,21 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       } else {
         user = await register(formData.name, formData.email, formData.password, formData.confirmPassword)
         // register auto-selecciona el rol Cliente → navegar directo
-        router.push('/dashboard')
-        onClose()
-        onSuccess?.()
+        window.location.href = '/dashboard'
         return
       }
 
       const roles = user.roles ?? []
 
       if (roles.length === 0) {
-        // Sin rol asignado → dashboard por defecto
-        router.push('/dashboard')
-        onClose()
-        onSuccess?.()
+        window.location.href = '/dashboard'
         return
       }
 
       if (roles.length === 1) {
-        // Un solo rol → auto-seleccionar y navegar
+        // Un solo rol → auto-seleccionar y navegar (full reload para resetear estado)
         setActiveRole(roles[0])
-        router.push(getRouteForRole(roles[0]))
-        onClose()
-        onSuccess?.()
+        window.location.href = getRouteForRole(roles[0])
         return
       }
 
@@ -149,9 +142,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
   const handleRoleSelect = (role: Role) => {
     setActiveRole(role)
-    router.push(getRouteForRole(role))
-    onClose()
-    onSuccess?.()
+    window.location.href = getRouteForRole(role)
   }
 
   // ── Helpers UI ──────────────────────────────────────────────────────────────

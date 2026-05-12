@@ -3,18 +3,20 @@
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { MessageCircle } from "lucide-react"
+import { api } from "@/lib/api"
 
 export function WhatsAppButton() {
   const [isVisible, setIsVisible] = useState(false)
   const [isPulsing, setIsPulsing] = useState(true)
+  const [whatsappNumber, setWhatsappNumber] = useState<string>("")
 
   useEffect(() => {
-    // Show button after initial load
-    const showTimer = setTimeout(() => {
-      setIsVisible(true)
-    }, 1500)
+    // Cargar número desde settings (admin lo configura)
+    api.getSettings()
+      .then(s => setWhatsappNumber((s.whatsapp_number ?? "").replace(/[^\d]/g, "")))
+      .catch(() => {})
 
-    // Pulse animation interval
+    const showTimer = setTimeout(() => setIsVisible(true), 1500)
     const pulseInterval = setInterval(() => {
       setIsPulsing(true)
       setTimeout(() => setIsPulsing(false), 2000)
@@ -26,9 +28,13 @@ export function WhatsAppButton() {
     }
   }, [])
 
-  const whatsappNumber = "1234567890"
   const message = encodeURIComponent("¡Hola! Me interesa obtener información sobre sus servicios de streaming.")
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`
+  const whatsappUrl = whatsappNumber
+    ? `https://wa.me/${whatsappNumber}?text=${message}`
+    : "#"
+
+  // Si no hay número configurado todavía, no renderizar el botón
+  if (!whatsappNumber) return null
 
   return (
     <a

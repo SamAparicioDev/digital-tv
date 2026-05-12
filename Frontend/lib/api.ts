@@ -25,12 +25,33 @@ export interface User {
   id: number
   name: string
   email: string
+  phone?: string | null
   is_active: boolean
   /** Mapped from wallet.saldo on login/register/getUser */
   balance: number
   created_at: string
   roles?: Role[]
   wallet?: Wallet
+}
+
+// Settings públicos del sitio (footer, whatsapp, etc.)
+export interface SiteSettings {
+  site_name?: string
+  site_description?: string
+  support_email?: string
+  whatsapp_number?: string
+  support_phone?: string
+  support_address?: string
+  enable_notifications?: string
+  enable_email_alerts?: string
+  enable_whatsapp_alerts?: string
+  maintenance_mode?: string
+  require_email_verification?: string
+  min_recharge_amount?: string
+  max_recharge_amount?: string
+  commission_percent?: string
+  welcome_bonus?: string
+  [k: string]: string | undefined
 }
 
 export interface NumeroCuenta {
@@ -104,6 +125,15 @@ export interface Oferta {
   servicios: StreamingServiceWithPivot[]
 }
 
+export interface DatosAcceso {
+  tipo: 'cuenta_completa' | 'perfil'
+  email: string
+  password?: string
+  perfil_nombre?: string
+  perfil_pin?: string
+  vigencia_hasta: string
+}
+
 export interface Compra {
   id: number
   user_id: number
@@ -112,6 +142,7 @@ export interface Compra {
   precio_compra: number
   estado: 'pendiente' | 'aprobada' | 'rechazada'
   nota: string | null
+  datos_acceso: string | null
   created_at: string
   updated_at: string
   oferta?: Oferta
@@ -185,6 +216,7 @@ export interface CuentaAdmin {
   vigencia_hasta: string | null
   is_active: boolean
   cuenta_asignada: boolean
+  disponible_como_completa: boolean
   perfiles_total: number
   perfiles_disponibles: number
   perfiles: PerfilAdmin[]
@@ -204,6 +236,45 @@ export interface MiCuenta {
   vigencia_hasta: string
   vigente: boolean
   dias_restantes: number
+}
+
+// ─── Estrenos ─────────────────────────────────────────────────────────────────
+
+export interface Estreno {
+  id: number
+  titulo: string
+  formato: 'pelicula' | 'serie'
+  imagen: string | null
+  imagen_url: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  streaming_services?: { id: number; name: string; primary_color: string | null; logo_url: string | null }[]
+}
+
+// ─── Tutoriales + Categorías ──────────────────────────────────────────────────
+
+export interface TutorialCategoria {
+  id: number
+  nombre: string
+  descripcion: string | null
+  is_active: boolean
+}
+
+export interface Tutorial {
+  id: number
+  titulo: string
+  descripcion: string | null
+  youtube_url: string
+  youtube_id: string | null
+  duracion: string | null
+  categoria_id: number | null
+  is_active: boolean
+  thumbnail_url: string | null
+  embed_url: string | null
+  categoria?: TutorialCategoria | null
+  created_at: string
+  updated_at: string
 }
 
 // ─── Deprecated types kept for UI compatibility ───────────────────────────────
@@ -235,21 +306,10 @@ const removeToken = () => {
 
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 
-function getCsrfToken(): string | undefined {
-  return document.cookie
-    .split('; ')
-    .find(row => row.startsWith('XSRF-TOKEN='))
-    ?.split('=')[1]
-}
-
 function headers(auth = true): HeadersInit {
   const h: HeadersInit = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
-  }
-  const csrfToken = getCsrfToken()
-  if (csrfToken) {
-    h['X-XSRF-TOKEN'] = decodeURIComponent(csrfToken)
   }
   if (auth) {
     const token = getToken()
@@ -278,14 +338,9 @@ export const api = {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   async login(email: string, password: string): Promise<AuthResponse> {
-    // Get CSRF cookie first
-    await fetch(`${API_BASE.replace('/api', '')}/sanctum/csrf-cookie`, {
-      credentials: 'include',
-    })
     const res = await fetch(`${API_BASE}/ingresar`, {
       method: 'POST',
       headers: headers(false),
-      credentials: 'include',
       body: JSON.stringify({ email, password }),
     })
     const data = await handleResponse<AuthResponse>(res)
@@ -301,14 +356,9 @@ export const api = {
     password: string,
     passwordConfirmation: string
   ): Promise<AuthResponse> {
-    // Get CSRF cookie first
-    await fetch(`${API_BASE.replace('/api', '')}/sanctum/csrf-cookie`, {
-      credentials: 'include',
-    })
     const res = await fetch(`${API_BASE}/registrar`, {
       method: 'POST',
       headers: headers(false),
-      credentials: 'include',
       body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
     })
     const data = await handleResponse<AuthResponse>(res)
@@ -519,6 +569,15 @@ export const api = {
 
   // ── Ofertas CRUD ──────────────────────────────────────────────────────────────
 
+  async getStockDisponible(servicio_id: number, cuenta_completa: boolean): Promise<number> {
+    const res = await fetch(
+      `${API_BASE}/admin/stock-disponible?servicio_id=${servicio_id}&cuenta_completa=${cuenta_completa ? 1 : 0}`,
+      { headers: headers() }
+    )
+    const data = await handleResponse<{ stock: number }>(res)
+    return data.stock
+  },
+
   async deleteOferta(id: number): Promise<void> {
     const res = await fetch(`${API_BASE}/oferta/${id}`, { method: 'DELETE', headers: headers() })
     if (!res.ok) {
@@ -715,6 +774,141 @@ export const api = {
   ): Promise<{ success: boolean; newBalance: number }> {
     console.warn('[DEPRECATED] api.addUserBalance() - usa api.adjustWalletBalance(walletId, monto, motivo)')
     return { success: false, newBalance: 0 }
+  },
+
+  // ── Estrenos ───────────────────────────────────────────────────────────────
+
+  async getEstrenos(): Promise<Estreno[]> {
+    const res = await fetch(`${API_BASE}/estreno`, { headers: headers() })
+    return handleResponse<Estreno[]>(res)
+  },
+
+  async createEstreno(data: {
+    titulo: string; formato: 'pelicula' | 'serie'; imagen?: string
+    is_active?: boolean; streaming_service_ids?: number[]
+  }): Promise<Estreno> {
+    const res = await fetch(`${API_BASE}/estreno`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<Estreno>(res)
+  },
+
+  async updateEstreno(id: number, data: Partial<{
+    titulo: string; formato: 'pelicula' | 'serie'; imagen: string
+    is_active: boolean; streaming_service_ids: number[]
+  }>): Promise<Estreno> {
+    const res = await fetch(`${API_BASE}/estreno/${id}`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<Estreno>(res)
+  },
+
+  async deleteEstreno(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/estreno/${id}`, { method: 'DELETE', headers: headers() })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+      throw new Error(err.message || `HTTP ${res.status}`)
+    }
+  },
+
+  // ── Tutoriales ─────────────────────────────────────────────────────────────
+
+  async getTutoriales(): Promise<Tutorial[]> {
+    const res = await fetch(`${API_BASE}/tutorial`, { headers: headers() })
+    return handleResponse<Tutorial[]>(res)
+  },
+
+  async createTutorial(data: {
+    titulo: string; youtube_url: string; descripcion?: string
+    duracion?: string; categoria_id?: number; is_active?: boolean
+  }): Promise<Tutorial> {
+    const res = await fetch(`${API_BASE}/tutorial`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<Tutorial>(res)
+  },
+
+  async updateTutorial(id: number, data: Partial<{
+    titulo: string; youtube_url: string; descripcion: string
+    duracion: string; categoria_id: number | null; is_active: boolean
+  }>): Promise<Tutorial> {
+    const res = await fetch(`${API_BASE}/tutorial/${id}`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<Tutorial>(res)
+  },
+
+  async deleteTutorial(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/tutorial/${id}`, { method: 'DELETE', headers: headers() })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+      throw new Error(err.message || `HTTP ${res.status}`)
+    }
+  },
+
+  // ── Categorías de tutoriales ───────────────────────────────────────────────
+
+  async getTutorialCategorias(): Promise<TutorialCategoria[]> {
+    const res = await fetch(`${API_BASE}/tutorial-categoria`, { headers: headers() })
+    return handleResponse<TutorialCategoria[]>(res)
+  },
+
+  async createTutorialCategoria(data: { nombre: string; descripcion?: string; is_active?: boolean }): Promise<TutorialCategoria> {
+    const res = await fetch(`${API_BASE}/tutorial-categoria`, {
+      method: 'POST', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<TutorialCategoria>(res)
+  },
+
+  async updateTutorialCategoria(id: number, data: Partial<{ nombre: string; descripcion: string; is_active: boolean }>): Promise<TutorialCategoria> {
+    const res = await fetch(`${API_BASE}/tutorial-categoria/${id}`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(data),
+    })
+    return handleResponse<TutorialCategoria>(res)
+  },
+
+  async deleteTutorialCategoria(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/tutorial-categoria/${id}`, { method: 'DELETE', headers: headers() })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }))
+      throw new Error(err.message || `HTTP ${res.status}`)
+    }
+  },
+
+  // ── Perfil del usuario logueado ─────────────────────────────────────────────
+
+  async updateProfile(data: { name?: string; email?: string; phone?: string | null }): Promise<User> {
+    const res = await fetch(`${API_BASE}/profile`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(data),
+    })
+    const body = await handleResponse<{ ok: boolean; user: User }>(res)
+    return mapUserBalance(body.user)
+  },
+
+  async changePassword(data: {
+    current_password: string
+    new_password: string
+    new_password_confirmation: string
+  }): Promise<void> {
+    const res = await fetch(`${API_BASE}/profile/password`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(data),
+    })
+    await handleResponse<{ ok: boolean; message: string }>(res)
+  },
+
+  // ── Settings del sitio ──────────────────────────────────────────────────────
+
+  async getSettings(): Promise<SiteSettings> {
+    const res = await fetch(`${API_BASE}/settings`, { headers: headers(false) })
+    return handleResponse<SiteSettings>(res)
+  },
+
+  async updateSettings(settings: Partial<SiteSettings>): Promise<SiteSettings> {
+    const res = await fetch(`${API_BASE}/admin/settings`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify(settings),
+    })
+    const body = await handleResponse<{ ok: boolean; settings: SiteSettings }>(res)
+    return body.settings
   },
 }
 

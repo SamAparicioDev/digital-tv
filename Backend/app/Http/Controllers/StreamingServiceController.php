@@ -7,12 +7,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
 
 class StreamingServiceController extends Controller
 {
     public function index()
     {
-        return response()->json(StreamingService::all(), 200);
+        $data = Cache::remember('streaming_services', 300, fn() => StreamingService::all());
+        return response()->json($data, 200);
     }
 
     public function store(Request $request)
@@ -28,7 +30,9 @@ class StreamingServiceController extends Controller
         $data['slug'] = Str::slug($request->name);
         $data['cantidad_cuentas'] = 0;
 
-        return response()->json(StreamingService::create($data), 201);
+        $service = StreamingService::create($data);
+        Cache::forget('streaming_services');
+        return response()->json($service, 201);
     }
 
     public function show(StreamingService $streamingService)
@@ -52,6 +56,7 @@ class StreamingServiceController extends Controller
         }
 
         $streamingService->update($data);
+        Cache::forget('streaming_services');
         return response()->json($streamingService, 200);
     }
 
@@ -63,6 +68,7 @@ class StreamingServiceController extends Controller
         }
 
         $streamingService->delete();
+        Cache::forget('streaming_services');
         return response()->json(['message' => 'Servicio eliminado'], 200);
     }
 }

@@ -1,4 +1,4 @@
-# ── Stage 1: dependencias PHP via Composer ─────────────────────────────────────
+# ── Stage 1: dependencias PHP via Composer ───────────────────────────────────
 FROM composer:2 AS deps
 WORKDIR /app
 COPY Backend/composer.json Backend/composer.lock ./
@@ -9,20 +9,29 @@ RUN composer install \
     --prefer-dist \
     --ignore-platform-reqs
 
-# ── Stage 2: imagen de producción PHP ─────────────────────────────────────────
-FROM php:8.2-cli-alpine
+# ── Stage 2: imagen de producción PHP-FPM + Nginx ────────────────────────────
+FROM php:8.2-fpm-alpine
 
-RUN apk add --no-cache libpq \
+# Instala nginx, supervisor y extensiones PHP
+RUN apk add --no-cache nginx supervisor libpq \
     && apk add --no-cache --virtual .build-deps postgresql-dev \
-    && docker-php-ext-install pdo_pgsql bcmath \
-    && apk del .build-deps \
-    && echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini
+    && docker-php-ext-install pdo_pgsql bcmath opcache \
+    && apk del .build-deps
+
+# OPcache: mantiene los archivos PHP en memoria entre requests
+RUN printf "\
+opcache.enable=1\n\
+opcache.memory_consumption=128\n\
+opcache.max_accelerated_files=10000\n\
+opcache.validate_timestamps=1\n\
+opcache.revalidate_freq=0\n\
+memory_limit=512M\n" > /usr/local/etc/php/conf.d/perf.ini
 
 WORKDIR /app
 
 # Código fuente del backend
 COPY Backend/ .
-# .env con credenciales de Railway (está en la raíz del repo)
+# .env con credenciales (se sobreescriben por env vars del docker-compose)
 COPY .env .env
 # Vendor de composer
 COPY --from=deps /app/vendor vendor/
@@ -39,9 +48,13 @@ RUN mkdir -p \
 # Registra service providers (no necesita BD)
 RUN php artisan package:discover --ansi
 
+# Configuración de nginx y supervisor
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
 EXPOSE 8000
 
 COPY docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

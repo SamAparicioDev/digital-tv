@@ -15,12 +15,12 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
   User,
   Loader2,
   ShieldCheck,
   Home,
 } from "lucide-react"
+import { NotificationPanel } from "@/components/notifications/notification-panel"
 
 import { KeyRound } from "lucide-react"
 
@@ -173,10 +173,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <div className="flex-1" />
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-            </Button>
+            <NotificationPanel />
             {/* Saldo real desde el contexto */}
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border">
               <Wallet className="w-4 h-4 text-primary" />

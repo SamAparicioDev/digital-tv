@@ -20,10 +20,10 @@ import { api, type Oferta, type StreamingService } from "@/lib/api"
 
 interface ServicioRow { streaming_service_id: string; numero_perfiles: string; duracion_dias: string }
 interface OfertaForm {
-  precio: string; stock: string; garantia_dias: string
+  precio: string; garantia_dias: string
   cuenta_completa: boolean; is_active: boolean; servicios: ServicioRow[]
 }
-const emptyForm: OfertaForm = { precio: '', stock: '', garantia_dias: '0', cuenta_completa: false, is_active: true, servicios: [{ streaming_service_id: '', numero_perfiles: '1', duracion_dias: '30' }] }
+const emptyForm: OfertaForm = { precio: '', garantia_dias: '0', cuenta_completa: false, is_active: true, servicios: [{ streaming_service_id: '', numero_perfiles: '1', duracion_dias: '30' }] }
 
 export default function AdminPantallasPage() {
   const [ofertas, setOfertas] = useState<Oferta[]>([])
@@ -38,6 +38,8 @@ export default function AdminPantallasPage() {
   const [form, setForm] = useState<OfertaForm>(emptyForm)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [stockPreview, setStockPreview] = useState<number | null>(null)
+  const [isLoadingStock, setIsLoadingStock] = useState(false)
 
   const load = async () => {
     setIsLoading(true); setError(null)
@@ -49,23 +51,42 @@ export default function AdminPantallasPage() {
   }
   useEffect(() => { load() }, [])
 
-  const openCreate = () => { setEditingOferta(null); setForm(emptyForm); setSaveError(null); setDialogOpen(true) }
+  const openCreate = () => { setEditingOferta(null); setForm(emptyForm); setSaveError(null); setStockPreview(null); setDialogOpen(true) }
   const openEdit = (o: Oferta) => {
     setEditingOferta(o)
-    setForm({ precio: String(o.precio), stock: String(o.stock), garantia_dias: String(o.garantia_dias), cuenta_completa: o.cuenta_completa, is_active: o.is_active, servicios: o.servicios.length > 0 ? o.servicios.map(s => ({ streaming_service_id: String(s.id), numero_perfiles: String(s.pivot.numero_perfiles), duracion_dias: String(s.pivot.duracion_dias) })) : [{ streaming_service_id: '', numero_perfiles: '1', duracion_dias: '30' }] })
+    setForm({ precio: String(o.precio), garantia_dias: String(o.garantia_dias), cuenta_completa: o.cuenta_completa, is_active: o.is_active, servicios: o.servicios.length > 0 ? o.servicios.map(s => ({ streaming_service_id: String(s.id), numero_perfiles: String(s.pivot.numero_perfiles), duracion_dias: String(s.pivot.duracion_dias) })) : [{ streaming_service_id: '', numero_perfiles: '1', duracion_dias: '30' }] })
+    setStockPreview(o.stock)
     setSaveError(null); setDialogOpen(true)
+  }
+
+  const fetchStockPreview = async (servicioId: string, cuentaCompleta: boolean) => {
+    if (!servicioId) { setStockPreview(null); return }
+    setIsLoadingStock(true)
+    try {
+      const count = await api.getStockDisponible(parseInt(servicioId), cuentaCompleta)
+      setStockPreview(count)
+    } catch { setStockPreview(null) }
+    finally { setIsLoadingStock(false) }
   }
 
   const addServicio = () => setForm(f => ({ ...f, servicios: [...f.servicios, { streaming_service_id: '', numero_perfiles: '1', duracion_dias: '30' }] }))
   const removeServicio = (i: number) => setForm(f => ({ ...f, servicios: f.servicios.filter((_, idx) => idx !== i) }))
-  const updateServicio = (i: number, key: keyof ServicioRow, val: string) => setForm(f => ({ ...f, servicios: f.servicios.map((s, idx) => idx === i ? { ...s, [key]: val } : s) }))
+  const updateServicio = (i: number, key: keyof ServicioRow, val: string) => {
+    setForm(f => {
+      const updated = f.servicios.map((s, idx) => idx === i ? { ...s, [key]: val } : s)
+      if (key === 'streaming_service_id' && i === 0) {
+        fetchStockPreview(val, f.cuenta_completa)
+      }
+      return { ...f, servicios: updated }
+    })
+  }
 
   const handleSave = async () => {
-    if (!form.precio || !form.stock) { setSaveError('Precio y stock son requeridos'); return }
+    if (!form.precio) { setSaveError('El precio es requerido'); return }
     if (form.servicios.some(s => !s.streaming_service_id)) { setSaveError('Selecciona un servicio para cada fila'); return }
     setIsSaving(true); setSaveError(null)
     try {
-      const payload = { precio: parseFloat(form.precio), stock: parseInt(form.stock), garantia_dias: parseInt(form.garantia_dias) || 0, cuenta_completa: form.cuenta_completa, is_active: form.is_active, servicios_incluidos: form.servicios.map(s => ({ streaming_service_id: parseInt(s.streaming_service_id), numero_perfiles: parseInt(s.numero_perfiles) || 1, duracion_dias: parseInt(s.duracion_dias) || 30 })) }
+      const payload = { precio: parseFloat(form.precio), garantia_dias: parseInt(form.garantia_dias) || 0, cuenta_completa: form.cuenta_completa, is_active: form.is_active, servicios_incluidos: form.servicios.map(s => ({ streaming_service_id: parseInt(s.streaming_service_id), numero_perfiles: parseInt(s.numero_perfiles) || 1, duracion_dias: parseInt(s.duracion_dias) || 30 })) }
       if (editingOferta) {
         const updated = await api.updateOferta(editingOferta.id, payload as any)
         setOfertas(prev => prev.map(o => o.id === updated.id ? updated : o))
@@ -246,11 +267,19 @@ export default function AdminPantallasPage() {
                 <Label>Precio (COP) *</Label>
                 <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span><Input type="number" min="0" placeholder="15000" value={form.precio} onChange={e => setForm(f => ({ ...f, precio: e.target.value }))} className="pl-7" /></div>
               </div>
-              <div className="space-y-1"><Label>Stock *</Label><Input type="number" min="0" placeholder="10" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} /></div>
+              <div className="space-y-1">
+                <Label>Stock disponible</Label>
+                <div className={cn("h-9 px-3 flex items-center rounded-md border text-sm font-semibold", stockPreview === null ? "text-muted-foreground border-border" : stockPreview > 0 ? "text-green-500 border-green-500/30 bg-green-500/10" : "text-red-500 border-red-500/30 bg-red-500/10")}>
+                  {isLoadingStock ? <Loader2 className="w-4 h-4 animate-spin" /> : stockPreview === null ? 'Selecciona servicio' : `${stockPreview} disponible${stockPreview !== 1 ? 's' : ''}`}
+                </div>
+              </div>
             </div>
             <div className="space-y-1"><Label>Garantía (días)</Label><Input type="number" min="0" placeholder="0" value={form.garantia_dias} onChange={e => setForm(f => ({ ...f, garantia_dias: e.target.value }))} /></div>
             <div className="flex gap-6">
-              <div className="flex items-center gap-2"><Switch checked={form.cuenta_completa} onCheckedChange={v => setForm(f => ({ ...f, cuenta_completa: v }))} /><Label>Cuenta completa</Label></div>
+              <div className="flex items-center gap-2">
+                <Switch checked={form.cuenta_completa} onCheckedChange={v => { setForm(f => ({ ...f, cuenta_completa: v })); fetchStockPreview(form.servicios[0]?.streaming_service_id, v) }} />
+                <Label>Cuenta completa</Label>
+              </div>
               <div className="flex items-center gap-2"><Switch checked={form.is_active} onCheckedChange={v => setForm(f => ({ ...f, is_active: v }))} /><Label>Activa</Label></div>
             </div>
             {saveError && <p className="text-sm text-destructive">{saveError}</p>}

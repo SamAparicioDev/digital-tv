@@ -8,7 +8,17 @@
       "Bash(git push *)",
       "Bash(git merge *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/oferta: %{time_total}s\\\\n\" http://localhost:8000/api/oferta)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/streaming-service: %{time_total}s\\\\n\" http://localhost:8000/api/streaming-service)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/descuento: %{time_total}s\\\\n\" http://localhost:8000/api/descuento)",
+      "Bash(curl -s -o /dev/null -w 'Request __TRACKED_VAR__ - /api/oferta: %{time_total}s\\\\n' http://localhost:8000/api/oferta)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/oferta:           %{time_total}s\\\\n\" http://localhost:8000/api/oferta)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/descuento:         %{time_total}s\\\\n\" http://localhost:8000/api/descuento)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/oferta \\(cached\\):   %{time_total}s\\\\n\" http://localhost:8000/api/oferta)",
+      "Bash(curl -s -o /dev/null -w \"GET /api/streaming-service \\(cached\\): %{time_total}s\\\\n\" http://localhost:8000/api/streaming-service)"
     ]
   }
 }

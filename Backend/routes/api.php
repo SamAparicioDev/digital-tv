@@ -19,6 +19,10 @@ use App\Http\Controllers\MisCuentasController;
 use App\Http\Controllers\UserAdminController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\AdminAsignacionController;
+use App\Http\Controllers\EstrenoController;
+use App\Http\Controllers\TutorialController;
+use App\Http\Controllers\TutorialCategoriaController;
+use App\Http\Controllers\SiteSettingController;
 
 // ── Rutas públicas (sin autenticación) ───────────────────────────────────────
 Route::post('/ingresar', [AuthController::class, 'ingresar']);
@@ -34,9 +38,21 @@ Route::get('/descuento', [DescuentoController::class, 'index']);
 Route::get('/streaming-service', [StreamingServiceController::class, 'index']);
 Route::get('/streaming-service/{streaming_service}', [StreamingServiceController::class, 'show']);
 
+// Estrenos y tutoriales (públicos para el landing)
+Route::get('/estreno', [EstrenoController::class, 'index']);
+Route::get('/tutorial', [TutorialController::class, 'index']);
+Route::get('/tutorial-categoria', [TutorialCategoriaController::class, 'index']);
+
+// Settings públicos del sitio (footer, whatsapp, etc.)
+Route::get('/settings', [SiteSettingController::class, 'index']);
+
 // ── Rutas autenticadas ───────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    // Perfil del usuario logueado
+    Route::put('/profile',          [AuthController::class, 'updateProfile']);
+    Route::put('/profile/password', [AuthController::class, 'changePassword']);
 
     Route::get('/user', function (Request $request) {
         return $request->user()->load('roles', 'wallet');
@@ -87,6 +103,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware(['privilege:gestionar_ofertas'])->group(function () {
+        Route::get('/admin/stock-disponible', [OfertaController::class, 'stockDisponible']);
         Route::post('/oferta', [OfertaController::class, 'store']);
         Route::put('/oferta/{oferta}', [OfertaController::class, 'update']);
         Route::delete('/oferta/{oferta}', [OfertaController::class, 'destroy']);
@@ -100,5 +117,25 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/transaccion', [AdminTransaccionController::class, 'index']);
         Route::put('/admin/transaccion/{transaccion}', [AdminTransaccionController::class, 'update']);
         Route::get('/admin/transaccion/{transaccion}', [AdminTransaccionController::class, 'show']);
+    });
+
+    // ── Settings del sitio (admin) ────────────────────────────────────────────
+    Route::middleware(['privilege:gestionar_acceso'])->group(function () {
+        Route::put('/admin/settings', [SiteSettingController::class, 'update']);
+    });
+
+    // ── Estrenos + Tutoriales (admin: cualquier privilegio de gestión) ────────
+    Route::middleware(['privilege:gestionar_servicios'])->group(function () {
+        Route::post('/estreno',   [EstrenoController::class, 'store']);
+        Route::put('/estreno/{estreno}',    [EstrenoController::class, 'update']);
+        Route::delete('/estreno/{estreno}', [EstrenoController::class, 'destroy']);
+
+        Route::post('/tutorial',                       [TutorialController::class, 'store']);
+        Route::put('/tutorial/{tutorial}',             [TutorialController::class, 'update']);
+        Route::delete('/tutorial/{tutorial}',          [TutorialController::class, 'destroy']);
+
+        Route::post('/tutorial-categoria',                       [TutorialCategoriaController::class, 'store']);
+        Route::put('/tutorial-categoria/{categoria}',            [TutorialCategoriaController::class, 'update']);
+        Route::delete('/tutorial-categoria/{categoria}',         [TutorialCategoriaController::class, 'destroy']);
     });
 });

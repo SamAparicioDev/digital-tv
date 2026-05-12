@@ -13,5 +13,8 @@ php artisan db:seed --class=MetodoPagoSeeder --force
 echo "==> Enlazando storage publico..."
 php artisan storage:link --force 2>/dev/null || true
 
-echo "==> Iniciando servidor en 0.0.0.0:8000..."
-exec php artisan serve --host=0.0.0.0 --port=8000
+echo "==> Calentando cache de configuracion..."
+php artisan config:cache
+
+echo "==> Iniciando nginx + php-fpm via supervisord en :8000..."
+exec /usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf

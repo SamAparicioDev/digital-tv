@@ -95,4 +95,51 @@ class AuthController extends Controller
             'message' => 'Sesión cerrada correctamente'
         ], 200);
     }
+
+    /** PUT /api/profile — actualizar nombre, email y teléfono */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) return response()->json(['ok' => false, 'message' => 'No autenticado'], 401);
+
+        $data = $request->validate([
+            'name'  => 'sometimes|required|string|max:50',
+            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:30',
+        ]);
+
+        $user->update($data);
+
+        return response()->json([
+            'ok'      => true,
+            'message' => 'Perfil actualizado correctamente',
+            'user'    => $user->fresh()->load('roles', 'wallet'),
+        ]);
+    }
+
+    /** PUT /api/profile/password — cambiar contraseña verificando la actual */
+    public function changePassword(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) return response()->json(['ok' => false, 'message' => 'No autenticado'], 401);
+
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password'     => 'required|string|min:8|confirmed',
+        ]);
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'La contraseña actual es incorrecta',
+            ], 422);
+        }
+
+        $user->update(['password' => Hash::make($request->new_password)]);
+
+        return response()->json([
+            'ok'      => true,
+            'message' => 'Contraseña actualizada correctamente',
+        ]);
+    }
 }
