@@ -1,11 +1,19 @@
 #!/bin/sh
 set -e
 
+PORT=${PORT:-8000}
+
+echo "==> Generando nginx.conf para puerto $PORT..."
+envsubst '${PORT}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+
 echo "==> Limpiando cache de configuracion..."
 php artisan config:clear
 
 echo "==> Ejecutando migraciones..."
 php artisan migrate --force
+
+echo "==> Sembrando privilegios, roles y usuario administrador..."
+php artisan db:seed --class=DatabaseSeeder --force
 
 echo "==> Sembrando metodos de pago..."
 php artisan db:seed --class=MetodoPagoSeeder --force
@@ -16,5 +24,5 @@ php artisan storage:link --force 2>/dev/null || true
 echo "==> Calentando cache de configuracion..."
 php artisan config:cache
 
-echo "==> Iniciando nginx + php-fpm via supervisord en :8000..."
+echo "==> Iniciando nginx + php-fpm via supervisord en :$PORT..."
 exec /usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf

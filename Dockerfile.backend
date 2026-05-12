@@ -12,8 +12,8 @@ RUN composer install \
 # ── Stage 2: imagen de producción PHP-FPM + Nginx ────────────────────────────
 FROM php:8.2-fpm-alpine
 
-# Instala nginx, supervisor y extensiones PHP
-RUN apk add --no-cache nginx supervisor libpq \
+# Instala nginx, supervisor, gettext (envsubst) y extensiones PHP
+RUN apk add --no-cache nginx supervisor libpq gettext \
     && apk add --no-cache --virtual .build-deps postgresql-dev \
     && docker-php-ext-install pdo_pgsql bcmath opcache \
     && apk del .build-deps
@@ -48,8 +48,8 @@ RUN mkdir -p \
 # Registra service providers (no necesita BD)
 RUN php artisan package:discover --ansi
 
-# Configuración de nginx y supervisor
-COPY docker/nginx.conf /etc/nginx/nginx.conf
+# nginx template — entrypoint.sh corre envsubst para generar nginx.conf con $PORT
+COPY docker/nginx.conf /etc/nginx/nginx.conf.template
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
 EXPOSE 8000
