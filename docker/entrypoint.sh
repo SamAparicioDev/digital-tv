@@ -1,8 +1,9 @@
 #!/bin/sh
 set -e
 
-PORT=${PORT:-8000}
+PORT=${PORT:-8080}
 
+echo "==> Puerto detectado: $PORT"
 echo "==> Limpiando cache de configuracion..."
 php artisan config:clear
 
