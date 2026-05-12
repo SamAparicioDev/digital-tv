@@ -9,34 +9,23 @@ RUN composer install \
     --prefer-dist \
     --ignore-platform-reqs
 
-# ── Stage 2: imagen de producción PHP-FPM + Nginx ────────────────────────────
-FROM php:8.2-fpm-alpine
+# ── Stage 2: imagen de producción ────────────────────────────────────────────
+FROM php:8.2-cli-alpine
 
-# Instala nginx, gettext (envsubst), netcat y extensiones PHP
-RUN apk add --no-cache nginx libpq gettext netcat-openbsd \
+# Extensiones PHP necesarias
+RUN apk add --no-cache libpq \
     && apk add --no-cache --virtual .build-deps postgresql-dev \
-    && docker-php-ext-install pdo_pgsql bcmath opcache \
+    && docker-php-ext-install pdo_pgsql bcmath \
     && apk del .build-deps
 
-# OPcache: mantiene los archivos PHP en memoria entre requests
-RUN printf "\
-opcache.enable=1\n\
-opcache.memory_consumption=128\n\
-opcache.max_accelerated_files=10000\n\
-opcache.validate_timestamps=1\n\
-opcache.revalidate_freq=0\n\
-memory_limit=512M\n" > /usr/local/etc/php/conf.d/perf.ini
+RUN printf "memory_limit=512M\n" > /usr/local/etc/php/conf.d/perf.ini
 
 WORKDIR /app
 
-# Código fuente del backend
 COPY Backend/ .
-# .env con credenciales (se sobreescriben por env vars del docker-compose)
 COPY .env .env
-# Vendor de composer
 COPY --from=deps /app/vendor vendor/
 
-# Directorios requeridos por Laravel
 RUN mkdir -p \
     storage/framework/sessions \
     storage/framework/views \
@@ -45,15 +34,11 @@ RUN mkdir -p \
     bootstrap/cache \
     && chmod -R 777 storage bootstrap/cache
 
-# Registra service providers (no necesita BD)
 RUN php artisan package:discover --ansi
-
-# nginx template — entrypoint.sh corre envsubst para generar nginx.conf con $PORT
-COPY docker/nginx.conf /etc/nginx/nginx.conf.template
-
-EXPOSE 8000
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+
+EXPOSE 8000
 
 ENTRYPOINT ["/entrypoint.sh"]
