@@ -12,8 +12,8 @@ RUN composer install \
 # ── Stage 2: imagen de producción PHP-FPM + Nginx ────────────────────────────
 FROM php:8.2-fpm-alpine
 
-# Instala nginx, gettext (envsubst) y extensiones PHP
-RUN apk add --no-cache nginx libpq gettext \
+# Instala nginx, gettext (envsubst), netcat y extensiones PHP
+RUN apk add --no-cache nginx libpq gettext netcat-openbsd \
     && apk add --no-cache --virtual .build-deps postgresql-dev \
     && docker-php-ext-install pdo_pgsql bcmath opcache \
     && apk del .build-deps
