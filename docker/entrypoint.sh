@@ -24,5 +24,8 @@ php artisan storage:link --force 2>/dev/null || true
 echo "==> Calentando cache de configuracion..."
 php artisan config:cache
 
-echo "==> Iniciando nginx + php-fpm via supervisord en :$PORT..."
-exec /usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf
+echo "==> Iniciando php-fpm en background..."
+php-fpm -D
+
+echo "==> Iniciando nginx en puerto $PORT..."
+exec nginx -g "daemon off;"
