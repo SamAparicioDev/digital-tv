@@ -11,10 +11,13 @@ export function WhatsAppButton() {
   const [whatsappNumber, setWhatsappNumber] = useState<string>("")
 
   useEffect(() => {
-    // Cargar número desde settings (admin lo configura)
+    // Cargar número desde settings, fallback al número fijo
     api.getSettings()
-      .then(s => setWhatsappNumber((s.whatsapp_number ?? "").replace(/[^\d]/g, "")))
-      .catch(() => {})
+      .then(s => {
+        const num = (s.whatsapp_number ?? "").replace(/[^\d]/g, "")
+        setWhatsappNumber(num || "3223570025")
+      })
+      .catch(() => setWhatsappNumber("3223570025"))
 
     const showTimer = setTimeout(() => setIsVisible(true), 1500)
     const pulseInterval = setInterval(() => {
@@ -28,13 +31,14 @@ export function WhatsAppButton() {
     }
   }, [])
 
-  const message = encodeURIComponent("¡Hola! Me interesa obtener información sobre sus servicios de streaming.")
+  const message = encodeURIComponent("Hola, estoy interesado en obtener más información sobre los servicios de Digital TV.")
   const whatsappUrl = whatsappNumber
     ? `https://wa.me/${whatsappNumber}?text=${message}`
     : "#"
 
   // Si no hay número configurado todavía, no renderizar el botón
-  if (!whatsappNumber) return null
+  // Nunca null - siempre hay número (fallback hardcodeado)
+  if (!isVisible) return null
 
   return (
     <a

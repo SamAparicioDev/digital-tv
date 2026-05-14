@@ -18,11 +18,11 @@ import {
 import { NotificationPanel } from "@/components/notifications/notification-panel"
 
 interface HeaderProps {
-  onLoginClick: () => void
-  onProfileClick: () => void
+  onLoginClick?: () => void
+  onProfileClick?: () => void
 }
 
-export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
+export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, isAuthenticated, isAdmin, logout } = useAuth()
@@ -37,11 +37,11 @@ export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
   }, [])
 
   const navItems = [
-    { label: "Inicio", href: "#hero" },
-    { label: "Promociones", href: "#promociones" },
-    { label: "Pantallas", href: "#pantallas" },
-    { label: "Estrenos", href: "#estrenos" },
-    { label: "Tutoriales", href: "#tutoriales" },
+    { label: "Inicio", href: "/#hero" },
+    { label: "Promociones", href: "/#promociones" },
+    { label: "Pantallas", href: "/#pantallas" },
+    { label: "Estrenos", href: "/#estrenos" },
+    { label: "Tutoriales", href: "/#tutoriales" },
   ]
 
   const handleLogout = async () => {
@@ -54,7 +54,7 @@ export function Header({ onLoginClick, onProfileClick }: HeaderProps) {
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
-        isScrolled
+        (isScrolled || isMobileMenuOpen)
           ? "bg-background/95 backdrop-blur-md shadow-lg border-b border-border"
           : "bg-transparent",
         "animate-in fade-in slide-in-from-top-4 duration-500"

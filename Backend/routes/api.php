@@ -89,6 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::apiResource('wallet', WalletController::class);
         Route::put('/admin/users/{user}/toggle', [UserAdminController::class, 'toggle']);
+        Route::put('/admin/users/{user}/roles', [UserAdminController::class, 'syncRoles']);
 
         // Asignación manual de credenciales a usuarios
         Route::get('/admin/asignaciones', [AdminAsignacionController::class, 'index']);

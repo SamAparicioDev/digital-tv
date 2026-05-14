@@ -98,7 +98,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           <Link href="/admin" className="flex items-center gap-2 group">
-            <Play className="w-8 h-8 text-primary fill-primary transition-transform duration-300 group-hover:scale-110 flex-shrink-0" />
+            <img src="/logo.png" alt="DigitalTv" className="w-8 h-8 rounded-full flex-shrink-0 transition-transform duration-300 group-hover:scale-110" />
             {!isSidebarCollapsed && (
               <span className="text-xl font-bold text-sidebar-foreground">
                 Digital<span className="text-primary">Tv</span>

@@ -13,7 +13,7 @@ class WalletController extends Controller
 {
     public function index()
     {
-        $wallets = Wallet::with('user')->get();
+        $wallets = Wallet::with('user.roles')->get();
         return response()->json($wallets, 200);
     }
 

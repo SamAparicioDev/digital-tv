@@ -6,25 +6,36 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { FadeIn } from "@/components/animations/motion"
 import {
-  Users, Search, Wallet, Loader2, RefreshCw, AlertCircle, UserCheck, UserX,
+  Users, Search, Wallet, Loader2, RefreshCw, AlertCircle, UserCheck, UserX, ShieldCheck,
 } from "lucide-react"
-import { api, type WalletWithUser } from "@/lib/api"
+import { api, type WalletWithUser, type Role } from "@/lib/api"
 import { formatCOP } from "@/lib/utils"
 
 export default function AdminUsuariosPage() {
   const [wallets, setWallets] = useState<WalletWithUser[]>([])
+  const [allRoles, setAllRoles] = useState<Role[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [togglingId, setTogglingId] = useState<number | null>(null)
 
+  // Dialog de roles
+  const [rolesDialog, setRolesDialog] = useState<{ open: boolean; wallet: WalletWithUser | null }>({ open: false, wallet: null })
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set())
+  const [savingRoles, setSavingRoles] = useState(false)
+
   const load = async () => {
     setIsLoading(true); setError(null)
-    try { setWallets(await api.getWallets()) }
-    catch (err) { setError(err instanceof Error ? err.message : 'Error cargando usuarios') }
-    finally { setIsLoading(false) }
+    try {
+      const [ws, roles] = await Promise.all([api.getWallets(), api.getRoles()])
+      setWallets(ws)
+      setAllRoles(roles)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando usuarios')
+    } finally { setIsLoading(false) }
   }
   useEffect(() => { load() }, [])
 
@@ -32,9 +43,39 @@ export default function AdminUsuariosPage() {
     setTogglingId(userId)
     try {
       const result = await api.toggleUserStatus(userId)
-      setWallets(prev => prev.map(w => w.user.id === userId ? { ...w, user: { ...w.user, is_active: result.is_active } } : w))
+      setWallets(prev => prev.map(w =>
+        w.user.id === userId ? { ...w, user: { ...w.user, is_active: result.is_active } } : w
+      ))
     } catch (err) { alert(err instanceof Error ? err.message : 'Error al cambiar estado') }
     finally { setTogglingId(null) }
+  }
+
+  const openRolesDialog = (wallet: WalletWithUser) => {
+    setRolesDialog({ open: true, wallet })
+    setSelectedRoles(new Set((wallet.user.roles ?? []).map(r => String(r.id))))
+  }
+
+  const toggleRole = (roleId: string) => {
+    setSelectedRoles(prev => {
+      const next = new Set(prev)
+      next.has(roleId) ? next.delete(roleId) : next.add(roleId)
+      return next
+    })
+  }
+
+  const saveRoles = async () => {
+    if (!rolesDialog.wallet) return
+    setSavingRoles(true)
+    try {
+      const result = await api.syncUserRoles(rolesDialog.wallet.user.id, Array.from(selectedRoles))
+      setWallets(prev => prev.map(w =>
+        w.user.id === rolesDialog.wallet!.user.id
+          ? { ...w, user: { ...w.user, roles: result.roles } }
+          : w
+      ))
+      setRolesDialog({ open: false, wallet: null })
+    } catch (err) { alert(err instanceof Error ? err.message : 'Error al guardar roles') }
+    finally { setSavingRoles(false) }
   }
 
   const filtered = wallets.filter(w =>
@@ -42,7 +83,7 @@ export default function AdminUsuariosPage() {
     w.user.email.toLowerCase().includes(searchQuery.toLowerCase())
   )
   const totalSaldo = wallets.reduce((s, w) => s + Number(w.saldo), 0)
-  const activos = wallets.filter(w => (w.user as any).is_active !== false).length
+  const activos = wallets.filter(w => w.user.is_active !== false).length
 
   return (
     <Suspense>
@@ -106,6 +147,7 @@ export default function AdminUsuariosPage() {
                       <TableRow className="bg-secondary/30 hover:bg-secondary/30">
                         <TableHead>Usuario</TableHead>
                         <TableHead>Email</TableHead>
+                        <TableHead>Roles</TableHead>
                         <TableHead>Saldo</TableHead>
                         <TableHead>Miembro desde</TableHead>
                         <TableHead>Estado</TableHead>
@@ -114,7 +156,8 @@ export default function AdminUsuariosPage() {
                     </TableHeader>
                     <TableBody>
                       {filtered.map(w => {
-                        const isActive = (w.user as any).is_active !== false
+                        const isActive = w.user.is_active !== false
+                        const roles = w.user.roles ?? []
                         return (
                           <TableRow key={w.id}>
                             <TableCell>
@@ -127,6 +170,16 @@ export default function AdminUsuariosPage() {
                             </TableCell>
                             <TableCell className="text-muted-foreground">{w.user.email}</TableCell>
                             <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {roles.length === 0
+                                  ? <span className="text-xs text-muted-foreground">Sin rol</span>
+                                  : roles.map(r => (
+                                    <Badge key={r.id} variant="secondary" className="text-xs capitalize">{r.nombre}</Badge>
+                                  ))
+                                }
+                              </div>
+                            </TableCell>
+                            <TableCell>
                               <span className={`font-semibold ${Number(w.saldo) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>{formatCOP(w.saldo)}</span>
                             </TableCell>
                             <TableCell className="text-muted-foreground text-sm">
@@ -138,19 +191,25 @@ export default function AdminUsuariosPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm"
-                                className={isActive ? 'text-red-500 hover:text-red-500 hover:bg-red-500/10' : 'text-green-500 hover:text-green-500 hover:bg-green-500/10'}
-                                onClick={() => handleToggle(w.user.id)} disabled={togglingId === w.user.id}>
-                                {togglingId === w.user.id ? <Loader2 className="w-4 h-4 animate-spin" />
-                                  : isActive ? <><UserX className="w-4 h-4 mr-1" />Desactivar</>
-                                  : <><UserCheck className="w-4 h-4 mr-1" />Activar</>}
-                              </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-500 hover:bg-blue-500/10"
+                                  onClick={() => openRolesDialog(w)}>
+                                  <ShieldCheck className="w-4 h-4 mr-1" />Roles
+                                </Button>
+                                <Button variant="ghost" size="sm"
+                                  className={isActive ? 'text-red-500 hover:text-red-500 hover:bg-red-500/10' : 'text-green-500 hover:text-green-500 hover:bg-green-500/10'}
+                                  onClick={() => handleToggle(w.user.id)} disabled={togglingId === w.user.id}>
+                                  {togglingId === w.user.id ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : isActive ? <><UserX className="w-4 h-4 mr-1" />Desactivar</>
+                                    : <><UserCheck className="w-4 h-4 mr-1" />Activar</>}
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         )
                       })}
                       {filtered.length === 0 && (
-                        <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No se encontraron usuarios</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No se encontraron usuarios</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
@@ -160,6 +219,49 @@ export default function AdminUsuariosPage() {
           </Card>
         </FadeIn>
       </div>
+
+      {/* Dialog de gestión de roles */}
+      <Dialog open={rolesDialog.open} onOpenChange={open => !open && setRolesDialog({ open: false, wallet: null })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Roles de {rolesDialog.wallet?.user.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-2 space-y-2">
+            {allRoles.length === 0
+              ? <p className="text-sm text-muted-foreground text-center py-4">No hay roles creados</p>
+              : allRoles.map(role => {
+                const checked = selectedRoles.has(String(role.id))
+                return (
+                  <button key={role.id} onClick={() => toggleRole(String(role.id))}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left
+                      ${checked ? 'border-primary/50 bg-primary/5' : 'border-border hover:border-border/80 hover:bg-secondary/30'}`}>
+                    <div className={`w-5 h-5 rounded flex items-center justify-center border-2 flex-shrink-0 transition-colors
+                      ${checked ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                      {checked && <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>}
+                    </div>
+                    <span className="font-medium capitalize text-foreground">{role.nombre}</span>
+                  </button>
+                )
+              })
+            }
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setRolesDialog({ open: false, wallet: null })} disabled={savingRoles}>
+              Cancelar
+            </Button>
+            <Button onClick={saveRoles} disabled={savingRoles}>
+              {savingRoles ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : 'Guardar roles'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Suspense>
   )
 }

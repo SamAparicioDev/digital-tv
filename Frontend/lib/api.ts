@@ -150,7 +150,7 @@ export interface Compra {
 }
 
 export interface WalletWithUser extends Wallet {
-  user: Pick<User, 'id' | 'name' | 'email' | 'created_at'>
+  user: Pick<User, 'id' | 'name' | 'email' | 'created_at' | 'is_active'> & { roles?: Role[] }
 }
 
 export interface AdminTransaccion extends Transaccion {
@@ -654,6 +654,13 @@ export const api = {
 
   async toggleUserStatus(userId: number): Promise<{ ok: boolean; is_active: boolean }> {
     const res = await fetch(`${API_BASE}/admin/users/${userId}/toggle`, { method: 'PUT', headers: headers() })
+    return handleResponse(res)
+  },
+
+  async syncUserRoles(userId: number, roleIds: string[]): Promise<{ ok: boolean; roles: Role[] }> {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/roles`, {
+      method: 'PUT', headers: headers(), body: JSON.stringify({ role_ids: roleIds }),
+    })
     return handleResponse(res)
   },
 
