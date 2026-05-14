@@ -89,7 +89,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed lg:sticky top-0 left-0 z-50 h-screen bg-sidebar border-r border-sidebar-border",
+          "fixed lg:sticky top-0 left-0 z-50 h-[100dvh] lg:h-screen bg-sidebar border-r border-sidebar-border",
           "flex flex-col transition-all duration-300 ease-out",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
           isSidebarCollapsed ? "w-20" : "w-64"
@@ -141,7 +141,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </nav>
 
         {/* User + Settings */}
-        <div className="p-3 border-t border-sidebar-border space-y-1">
+        <div className="p-3 pb-safe border-t border-sidebar-border space-y-1" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}>
           <Link
             href="/"
             className={cn(
