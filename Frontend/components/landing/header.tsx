@@ -209,8 +209,10 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
         {/* Mobile Menu */}
         <div
           className={cn(
-            "md:hidden overflow-hidden transition-all duration-300 ease-out",
-            isMobileMenuOpen ? "max-h-[500px] pb-4" : "max-h-0"
+            "md:hidden transition-all duration-300 ease-out",
+            isMobileMenuOpen
+              ? "max-h-[calc(100dvh-4rem)] overflow-y-auto pb-6"
+              : "max-h-0 overflow-hidden"
           )}
         >
           <nav className="flex flex-col gap-1 pt-2">
