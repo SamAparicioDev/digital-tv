@@ -490,20 +490,20 @@ export default function AdminSaldoPage() {
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto">
                     {filteredWallets.map((w) => (
-                      <div key={w.id} className="flex items-center justify-between p-4 rounded-lg border border-border hover:border-primary/50 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                      <div key={w.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 rounded-lg border border-border hover:border-primary/50 transition-colors gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold flex-shrink-0">
                             {w.user.name.charAt(0).toUpperCase()}
                           </div>
-                          <div>
-                            <p className="font-semibold text-foreground">{w.user.name}</p>
-                            <p className="text-sm text-muted-foreground">{w.user.email}</p>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground truncate">{w.user.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">{w.user.email}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-between sm:justify-end gap-4 flex-shrink-0">
                           <div className="text-right">
                             <p className="text-xs text-muted-foreground">Saldo</p>
-                            <p className="font-semibold text-primary">{formatCOP(w.saldo)}</p>
+                            <p className="font-semibold text-primary text-sm">{formatCOP(w.saldo)}</p>
                           </div>
                           <Button size="sm" className="bg-primary text-primary-foreground" onClick={() => { setSelectedWallet(w); setAddBalanceOpen(true) }}>
                             <Plus className="w-4 h-4 mr-1" />Ajustar

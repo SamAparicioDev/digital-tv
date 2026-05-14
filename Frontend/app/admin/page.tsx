@@ -107,12 +107,12 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       <FadeIn>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground">Resumen general de la plataforma</p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground truncate">Dashboard</h1>
+            <p className="text-muted-foreground text-sm">Resumen general de la plataforma</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={load} disabled={isLoading}>
+          <Button variant="ghost" size="sm" onClick={load} disabled={isLoading} className="flex-shrink-0">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -232,17 +232,17 @@ export default function AdminDashboardPage() {
                     {recentActivity.map((t) => {
                       const isDeposit = t.tipo === 'deposit'
                       return (
-                        <div key={t.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/50 transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold ${isDeposit ? 'bg-green-500/20 text-green-500' : 'bg-primary/20 text-primary'}`}>
+                        <div key={t.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/50 transition-colors gap-2">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 ${isDeposit ? 'bg-green-500/20 text-green-500' : 'bg-primary/20 text-primary'}`}>
                               {t.wallet?.user?.name?.charAt(0)?.toUpperCase() ?? '?'}
                             </div>
-                            <div>
-                              <p className="font-medium text-sm text-foreground">{t.wallet?.user?.name ?? 'Usuario'}</p>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm text-foreground truncate">{t.wallet?.user?.name ?? 'Usuario'}</p>
                               <p className="text-xs text-muted-foreground line-clamp-1">{t.descripcion}</p>
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex-shrink-0">
                             <p className={`text-sm font-semibold ${isDeposit ? 'text-green-500' : 'text-foreground'}`}>
                               {isDeposit ? '+' : '-'}${t.monto.toLocaleString('es-CO')}
                             </p>

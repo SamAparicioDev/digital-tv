@@ -204,8 +204,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <Menu className="w-5 h-5" />
           </Button>
 
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold text-foreground">Panel de Administración</h2>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">
+              <span className="hidden sm:inline">Panel de </span>Administración
+            </h2>
           </div>
 
           <div className="flex items-center gap-2">
@@ -218,7 +220,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 min-w-0">{children}</main>
       </div>
 
       {isSidebarOpen && (

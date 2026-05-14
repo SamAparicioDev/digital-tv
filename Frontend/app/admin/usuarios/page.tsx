@@ -141,15 +141,15 @@ export default function AdminUsuariosPage() {
               {isLoading ? <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
               : error ? <div className="flex flex-col items-center gap-3 py-12 text-muted-foreground"><AlertCircle className="w-10 h-10 text-red-500" /><p>{error}</p><Button variant="outline" size="sm" onClick={load}>Reintentar</Button></div>
               : (
-                <div className="rounded-lg border border-border overflow-x-auto">
-                  <Table>
+                <div className="rounded-lg border border-border">
+                  <Table className="min-w-[700px]">
                     <TableHeader>
                       <TableRow className="bg-secondary/30 hover:bg-secondary/30">
                         <TableHead>Usuario</TableHead>
-                        <TableHead>Email</TableHead>
+                        <TableHead className="hidden sm:table-cell">Email</TableHead>
                         <TableHead>Roles</TableHead>
                         <TableHead>Saldo</TableHead>
-                        <TableHead>Miembro desde</TableHead>
+                        <TableHead className="hidden md:table-cell">Miembro desde</TableHead>
                         <TableHead>Estado</TableHead>
                         <TableHead className="text-right">Acciones</TableHead>
                       </TableRow>
@@ -168,7 +168,7 @@ export default function AdminUsuariosPage() {
                                 <p className="font-medium text-foreground">{w.user.name}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-muted-foreground">{w.user.email}</TableCell>
+                            <TableCell className="text-muted-foreground hidden sm:table-cell max-w-[160px] truncate">{w.user.email}</TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-1">
                                 {roles.length === 0
@@ -180,9 +180,9 @@ export default function AdminUsuariosPage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <span className={`font-semibold ${Number(w.saldo) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>{formatCOP(w.saldo)}</span>
+                              <span className={`font-semibold text-sm ${Number(w.saldo) > 0 ? 'text-green-500' : 'text-muted-foreground'}`}>{formatCOP(w.saldo)}</span>
                             </TableCell>
-                            <TableCell className="text-muted-foreground text-sm">
+                            <TableCell className="text-muted-foreground text-sm hidden md:table-cell">
                               {new Date(w.user.created_at).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </TableCell>
                             <TableCell>
@@ -191,17 +191,18 @@ export default function AdminUsuariosPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-500 hover:bg-blue-500/10"
+                              <div className="flex items-center justify-end gap-1">
+                                <Button variant="ghost" size="sm" className="text-blue-500 hover:text-blue-500 hover:bg-blue-500/10 px-2"
                                   onClick={() => openRolesDialog(w)}>
-                                  <ShieldCheck className="w-4 h-4 mr-1" />Roles
+                                  <ShieldCheck className="w-4 h-4" />
+                                  <span className="hidden sm:inline ml-1">Roles</span>
                                 </Button>
                                 <Button variant="ghost" size="sm"
-                                  className={isActive ? 'text-red-500 hover:text-red-500 hover:bg-red-500/10' : 'text-green-500 hover:text-green-500 hover:bg-green-500/10'}
+                                  className={`px-2 ${isActive ? 'text-red-500 hover:text-red-500 hover:bg-red-500/10' : 'text-green-500 hover:text-green-500 hover:bg-green-500/10'}`}
                                   onClick={() => handleToggle(w.user.id)} disabled={togglingId === w.user.id}>
                                   {togglingId === w.user.id ? <Loader2 className="w-4 h-4 animate-spin" />
-                                    : isActive ? <><UserX className="w-4 h-4 mr-1" />Desactivar</>
-                                    : <><UserCheck className="w-4 h-4 mr-1" />Activar</>}
+                                    : isActive ? <><UserX className="w-4 h-4" /><span className="hidden sm:inline ml-1">Desactivar</span></>
+                                    : <><UserCheck className="w-4 h-4" /><span className="hidden sm:inline ml-1">Activar</span></>}
                                 </Button>
                               </div>
                             </TableCell>
@@ -209,7 +210,7 @@ export default function AdminUsuariosPage() {
                         )
                       })}
                       {filtered.length === 0 && (
-                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No se encontraron usuarios</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8 text-sm">No se encontraron usuarios</TableCell></TableRow>
                       )}
                     </TableBody>
                   </Table>
