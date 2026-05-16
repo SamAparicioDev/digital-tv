@@ -33,7 +33,8 @@ import {
   Wallet,
   PackageCheck,
 } from "lucide-react";
-import { Header } from "@/components/landing/header";
+import { Header } from "@/components/landing/header"
+import { useRouter } from "next/navigation";
 import { Footer } from "@/components/landing/footer";
 import { WhatsAppButton } from "@/components/landing/whatsapp-button";
 import { useAuth } from "@/contexts/auth-context";
@@ -88,6 +89,7 @@ const LoadingCard = () => null;
 
 export default function StorePage() {
   const { user, isAuthenticated, activeRole, refreshUser } = useAuth();
+  const router = useRouter();
 
   const [ofertas, setOfertas] = useState<Oferta[]>([]);
   const [descuentos, setDescuentos] = useState<Descuento[]>([])
@@ -164,7 +166,7 @@ export default function StorePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onProfileClick={() => router.push('/dashboard')} />
 
       <main className="pt-20">
         {/* Hero */}
@@ -442,7 +444,7 @@ export default function StorePage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     {selectedOferta.cuenta_completa
                       ? 'Recibirás email + contraseña. Puedes usar todos los perfiles internos.'
-                      : 'Recibirás un perfil con su PIN. La cuenta puede ser compartida.'}
+                      : 'Cuenta compartida — solo 1 dispositivo conectado. No cambiar nombres, contraseña, PIN ni eliminar perfiles. Incumplir estas reglas: suspensión de 3 días.'}
                   </p>
                 </div>
 

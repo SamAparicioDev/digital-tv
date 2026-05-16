@@ -435,13 +435,13 @@ export default function AdminCuentasPage() {
 
       {/* Dialog crear/editar cuenta */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="bg-card border-border max-w-md">
-          <DialogHeader>
+        <DialogContent className="bg-card border-border max-w-md max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{editingCuenta ? 'Editar cuenta' : 'Nueva cuenta de streaming'}</DialogTitle>
             <DialogDescription>Completa los datos de acceso de la cuenta</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 py-2 overflow-y-auto flex-1 pr-1">
             <div className="space-y-2">
               <Label>Servicio de streaming *</Label>
               <select
@@ -480,8 +480,8 @@ export default function AdminCuentasPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Descripción (opcional)</Label>
-              <Input value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Notas internas..." />
+              <Label>Proveedor (opcional)</Label>
+              <Input value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="¿Quién te vendió esta cuenta?" />
             </div>
 
             {/* Modo venta (solo en creación) */}
@@ -530,7 +530,7 @@ export default function AdminCuentasPage() {
             {saveError && <p className="text-sm text-destructive">{saveError}</p>}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 pt-2 border-t border-border">
             <Button variant="outline" className="bg-transparent" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button className="bg-primary text-primary-foreground" onClick={handleSaveCuenta} disabled={isSaving}>
               {isSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : editingCuenta ? 'Guardar cambios' : 'Crear cuenta'}

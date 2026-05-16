@@ -35,7 +35,7 @@ const navItems = [
   { label: "Usuarios", href: "/admin/usuarios", icon: Users },
   { label: "Saldo", href: "/admin/saldo", icon: Wallet },
   { label: "Cuentas", href: "/admin/cuentas", icon: KeyRound },
-  { label: "Ofertas", href: "/admin/pantallas", icon: Monitor },
+  { label: "Precio cuentas", href: "/admin/pantallas", icon: Monitor },
   { label: "Servicios", href: "/admin/estrenos", icon: Film },
   { label: "Estrenos", href: "/admin/releases", icon: Sparkles },
   { label: "Tutoriales", href: "/admin/tutoriales", icon: BookOpen },

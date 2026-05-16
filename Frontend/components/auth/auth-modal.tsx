@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import {
   X, Mail, Lock, User, Eye, EyeOff, Loader2, Play,
-  Shield, UserCircle, TrendingUp, ChevronRight, ArrowLeft,
+  Shield, UserCircle, TrendingUp, ChevronRight, ArrowLeft, Phone,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Role, User as UserType } from "@/lib/api"
@@ -74,7 +74,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const [apiError, setApiError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', confirmPassword: '',
+    name: '', email: '', phone: '', password: '', confirmPassword: '',
   })
 
   // ── Validación ──────────────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
       if (mode === 'login') {
         user = await login(formData.email, formData.password)
       } else {
-        user = await register(formData.name, formData.email, formData.password, formData.confirmPassword)
+        user = await register(formData.name, formData.email, formData.password, formData.confirmPassword, formData.phone || undefined)
         // register auto-selecciona el rol Cliente → navegar directo
         window.location.href = '/dashboard'
         return
@@ -154,7 +154,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   }
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', password: '', confirmPassword: '' })
+    setFormData({ name: '', email: '', phone: '', password: '', confirmPassword: '' })
     setErrors({})
     setApiError(null)
     setPendingUser(null)
@@ -225,21 +225,37 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {mode === 'register' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nombre</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        id="name"
-                        type="text"
-                        placeholder="Tu nombre"
-                        value={formData.name}
-                        onChange={(e) => handleInputChange('name', e.target.value)}
-                        className={cn('pl-10', errors.name && 'border-destructive')}
-                      />
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nombre</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="name"
+                          type="text"
+                          placeholder="Tu nombre"
+                          value={formData.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          className={cn('pl-10', errors.name && 'border-destructive')}
+                        />
+                      </div>
+                      {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
                     </div>
-                    {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-                  </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">WhatsApp <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="phone"
+                          type="tel"
+                          placeholder="3001234567"
+                          value={formData.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 <div className="space-y-2">

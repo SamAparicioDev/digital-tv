@@ -161,14 +161,14 @@ export function Screens({ onBuyClick }: ScreensProps) {
                           {[
                             oferta.cuenta_completa
                               ? 'Acceso total: email + contraseña propios'
-                              : `Perfil personal con PIN — comparte la cuenta con otros usuarios`,
+                              : 'Cuenta compartida — 1 dispositivo conectado',
                             `${dias} días de vigencia`,
                             oferta.garantia_dias > 0 ? `${oferta.garantia_dias} días de garantía` : null,
                             oferta.cuenta_completa
                               ? `Hasta ${Math.max(perfiles, 4)} perfiles dentro de la cuenta`
                               : 'No requiere instalación, listo para usar',
                           ].filter(Boolean).map((f, j) => (
-                            <li key={j} className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <li key={j} className="flex items-center gap-2 text-base text-muted-foreground">
                               <Check className="w-4 h-4 text-primary flex-shrink-0" />
                               {f}
                             </li>

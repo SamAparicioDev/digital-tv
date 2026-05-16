@@ -150,7 +150,7 @@ export interface Compra {
 }
 
 export interface WalletWithUser extends Wallet {
-  user: Pick<User, 'id' | 'name' | 'email' | 'created_at' | 'is_active'> & { roles?: Role[] }
+  user: Pick<User, 'id' | 'name' | 'email' | 'phone' | 'created_at' | 'is_active'> & { roles?: Role[] }
 }
 
 export interface AdminTransaccion extends Transaccion {
@@ -354,12 +354,13 @@ export const api = {
     name: string,
     email: string,
     password: string,
-    passwordConfirmation: string
+    passwordConfirmation: string,
+    phone?: string
   ): Promise<AuthResponse> {
     const res = await fetch(`${API_BASE}/registrar`, {
       method: 'POST',
       headers: headers(false),
-      body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation }),
+      body: JSON.stringify({ name, email, password, password_confirmation: passwordConfirmation, phone }),
     })
     const data = await handleResponse<AuthResponse>(res)
     const user = mapUserBalance(data.user)

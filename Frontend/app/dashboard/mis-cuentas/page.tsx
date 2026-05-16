@@ -159,7 +159,7 @@ function CuentaCard({
             <div className={cn("flex items-center gap-1 text-xs font-medium",
               c.vigente ? 'text-green-500' : 'text-red-400')}>
               <Clock className="w-3 h-3" />
-              {c.vigente ? `${c.dias_restantes}d restantes` : 'Vencido'}
+              {c.vigente ? `${Math.round(c.dias_restantes)}d restantes` : 'Vencido'}
             </div>
           </div>
         </div>
@@ -176,8 +176,8 @@ function CuentaCard({
               copiedField={copiedField} onCopy={onCopy} />
           )}
 
-          {/* Contraseña (solo cuenta completa) */}
-          {c.tipo === 'cuenta_completa' && c.password && (
+          {/* Contraseña (cuenta completa y perfil) */}
+          {c.password && (
             <div className="flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground">Contraseña</p>

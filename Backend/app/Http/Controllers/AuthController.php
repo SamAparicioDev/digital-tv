@@ -18,7 +18,8 @@ class AuthController extends Controller
         $request->validate([
             'name'     => 'required|string|max:50',
             'email'    => 'required|email|unique:users,email',
-            'password' => 'required|confirmed|string|min:8|max:30',
+            'password' => 'required|confirmed|string|min:6|max:30',
+            'phone'    => 'nullable|string|max:30',
         ]);
 
         return DB::transaction(function () use ($request) {
@@ -27,6 +28,7 @@ class AuthController extends Controller
                 'name'     => $request->name,
                 'email'    => $request->email,
                 'password' => Hash::make($request->password),
+                'phone'    => $request->phone,
             ]);
 
             Wallet::create([

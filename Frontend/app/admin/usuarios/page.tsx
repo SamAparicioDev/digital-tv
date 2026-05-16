@@ -169,6 +169,9 @@ export default function AdminUsuariosPage() {
                                 <div className="min-w-0">
                                   <p className="font-medium text-foreground truncate">{w.user.name}</p>
                                   <p className="text-xs text-muted-foreground truncate">{w.user.email}</p>
+                                  {w.user.phone && (
+                                    <p className="text-xs text-primary truncate">📱 {w.user.phone}</p>
+                                  )}
                                 </div>
                               </div>
                               <Badge variant="outline" className={`flex-shrink-0 text-xs ${isActive ? 'text-green-500 border-green-500/30' : 'text-red-500 border-red-500/30'}`}>
@@ -221,6 +224,7 @@ export default function AdminUsuariosPage() {
                           <TableRow className="bg-secondary/30 hover:bg-secondary/30">
                             <TableHead>Usuario</TableHead>
                             <TableHead>Email</TableHead>
+                            <TableHead className="hidden lg:table-cell">WhatsApp</TableHead>
                             <TableHead>Roles</TableHead>
                             <TableHead>Saldo</TableHead>
                             <TableHead className="hidden lg:table-cell">Miembro desde</TableHead>
@@ -242,7 +246,10 @@ export default function AdminUsuariosPage() {
                                     <p className="font-medium text-foreground">{w.user.name}</p>
                                   </div>
                                 </TableCell>
-                                <TableCell className="text-muted-foreground max-w-[180px] truncate">{w.user.email}</TableCell>
+                                <TableCell className="text-muted-foreground max-w-[160px] truncate">{w.user.email}</TableCell>
+                                <TableCell className="text-muted-foreground text-sm hidden lg:table-cell">
+                                  {w.user.phone || <span className="text-muted-foreground/40">—</span>}
+                                </TableCell>
                                 <TableCell>
                                   <div className="flex flex-wrap gap-1">
                                     {roles.length === 0
@@ -304,7 +311,7 @@ export default function AdminUsuariosPage() {
           <div className="py-2 space-y-2">
             {allRoles.length === 0
               ? <p className="text-sm text-muted-foreground text-center py-4">No hay roles creados</p>
-              : allRoles.map(role => {
+              : allRoles.filter(r => ['admin', 'cliente'].includes(r.nombre.toLowerCase())).map(role => {
                 const checked = selectedRoles.has(String(role.id))
                 return (
                   <button key={role.id} onClick={() => toggleRole(String(role.id))}
