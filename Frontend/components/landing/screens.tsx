@@ -102,8 +102,8 @@ export function Screens({ onBuyClick }: ScreensProps) {
                   const tieneDescuento = desc.descuento !== null && desc.precioFinal < desc.precioOriginal
 
                   return (
-                    <FadeIn key={oferta.id} delay={i * 0.08} direction="up">
-                      <Card className="relative overflow-hidden bg-card border-border p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-primary/50 group">
+                    <FadeIn key={oferta.id} delay={i * 0.08} direction="up" className="h-full">
+                      <Card className="relative overflow-hidden bg-card border-border p-6 transition-all duration-300 hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-primary/50 group flex flex-col h-full">
                         {/* Color bar */}
                         <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
 
@@ -157,7 +157,7 @@ export function Screens({ onBuyClick }: ScreensProps) {
                         </div>
 
                         {/* Features */}
-                        <ul className="space-y-2 mb-6">
+                        <ul className="space-y-2 mb-6 flex-1">
                           {[
                             oferta.cuenta_completa
                               ? 'Acceso total: email + contraseña propios'

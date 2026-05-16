@@ -19,7 +19,7 @@ class AuthController extends Controller
             'name'     => 'required|string|max:50',
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|confirmed|string|min:6|max:30',
-            'phone'    => 'nullable|string|max:30',
+            'phone'    => 'required|string|max:30',
         ]);
 
         return DB::transaction(function () use ($request) {

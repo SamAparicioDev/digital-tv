@@ -25,6 +25,7 @@ import { NotificationPanel } from "@/components/notifications/notification-panel
 import { KeyRound } from "lucide-react"
 
 const navItems = [
+  { label: "Inicio", href: "/", icon: Home },
   { label: "Panel", href: "/dashboard", icon: LayoutDashboard },
   { label: "Mis Cuentas", href: "/dashboard/mis-cuentas", icon: KeyRound },
   { label: "Saldo", href: "/dashboard/saldo", icon: Wallet },
@@ -111,16 +112,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </Link>
             )
           })}
-
-          {/* Ir al inicio */}
-          <Link
-            href="/"
-            onClick={() => setIsSidebarOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
-          >
-            <Home className="w-5 h-5" />
-            <span className="font-medium">Inicio</span>
-          </Link>
 
           {/* Acceso rápido al admin si el usuario también tiene ese rol */}
           {isAdmin && (

@@ -81,6 +81,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
   const validateForm = () => {
     const e: Record<string, string> = {}
+    if (mode === 'register' && !formData.phone.trim()) e.phone = 'El número de WhatsApp es requerido'
     if (mode === 'register' && !formData.name.trim()) e.name = 'El nombre es requerido'
     if (!formData.email.trim()) e.email = 'El email es requerido'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) e.email = 'Email inválido'
@@ -227,6 +228,21 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                 {mode === 'register' && (
                   <>
                     <div className="space-y-2">
+                      <Label htmlFor="phone">WhatsApp</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="phone"
+                          type="tel"
+                          placeholder="3001234567"
+                          value={formData.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          className={cn('pl-10', errors.phone && 'border-destructive')}
+                        />
+                      </div>
+                      {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="name">Nombre</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -240,20 +256,6 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                         />
                       </div>
                       {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">WhatsApp <span className="text-muted-foreground text-xs">(opcional)</span></Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="phone"
-                          type="tel"
-                          placeholder="3001234567"
-                          value={formData.phone}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
-                          className="pl-10"
-                        />
-                      </div>
                     </div>
                   </>
                 )}
