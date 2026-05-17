@@ -134,7 +134,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 title={isSidebarCollapsed ? item.label : undefined}
               >
                 <item.icon className="w-5 h-5 flex-shrink-0" />
-                {!isSidebarCollapsed && <span className="font-medium text-sm">{item.label}</span>}
+                {!isSidebarCollapsed && <span className="font-semibold text-base">{item.label}</span>}
               </Link>
             )
           })}
@@ -151,7 +151,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             title="Ir al inicio"
           >
             <Home className="w-5 h-5" />
-            {!isSidebarCollapsed && <span className="font-medium text-sm">Ir al inicio</span>}
+            {!isSidebarCollapsed && <span className="font-semibold text-base">Ir al inicio</span>}
           </Link>
 
           <Link
@@ -162,7 +162,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             )}
           >
             <Settings className="w-5 h-5" />
-            {!isSidebarCollapsed && <span className="font-medium text-sm">Configuración</span>}
+            {!isSidebarCollapsed && <span className="font-semibold text-base">Configuración</span>}
           </Link>
 
           {!isSidebarCollapsed && (
@@ -186,7 +186,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             title={isSidebarCollapsed ? "Cerrar sesión" : undefined}
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
-            {!isSidebarCollapsed && <span className="font-medium text-sm">Cerrar sesión</span>}
+            {!isSidebarCollapsed && <span className="font-semibold text-base">Cerrar sesión</span>}
           </button>
         </div>
       </aside>
