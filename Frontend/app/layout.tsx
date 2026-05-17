@@ -45,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="dark">
-      <body className={`${montserrat.variable} font-sans antialiased bg-background text-foreground`}>
+      <body className={`${montserrat.className} antialiased bg-background text-foreground`}>
         <AuthProvider>
           <LogoutOverlay />
           {children}
