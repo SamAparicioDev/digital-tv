@@ -109,8 +109,8 @@ export default function AdminDashboardPage() {
       <FadeIn>
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground truncate">Dashboard</h1>
-            <p className="text-lg text-muted-foreground">Resumen general de la plataforma</p>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary truncate">Dashboard</h1>
+            <p className="text-xl text-primary">Resumen general de la plataforma</p>
           </div>
           <Button variant="ghost" size="sm" onClick={load} disabled={isLoading} className="flex-shrink-0">
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />

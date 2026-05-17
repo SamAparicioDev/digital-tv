@@ -123,7 +123,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                   </div>
                   <Button
                     onClick={() => setIsRechargeOpen(true)}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 text-lg font-bold"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 text-xl font-bold"
                   >
                     <Wallet className="w-5 h-5 mr-2" />
                     Recargar

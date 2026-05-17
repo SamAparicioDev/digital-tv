@@ -31,16 +31,16 @@ import {
 import { NotificationPanel } from "@/components/notifications/notification-panel"
 
 const navItems = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard, className: "text-lg font-bold" },
-  { label: "Usuarios", href: "/admin/usuarios", icon: Users, className: "text-lg font-bold" },
-  { label: "Saldo", href: "/admin/saldo", icon: Wallet, className: "text-lg font-bold" },
-  { label: "Cuentas", href: "/admin/cuentas", icon: KeyRound, className: "text-lg font-bold" },
-  { label: "Precio cuentas", href: "/admin/pantallas", icon: Monitor, className: "text-lg font-bold" },
-  { label: "Servicios", href: "/admin/estrenos", icon: Film, className: "text-lg font-bold" },
-  { label: "Estrenos", href: "/admin/releases", icon: Sparkles, className: "text-lg font-bold" },
-  { label: "Tutoriales", href: "/admin/tutoriales", icon: BookOpen, className: "text-lg font-bold" },
-  { label: "Promociones", href: "/admin/promociones", icon: Percent, className: "text-lg font-bold" },
-  { label: "Reportes", href: "/admin/reportes", icon: BarChart2, className: "text-lg font-bold" },
+  { label: "Dashboard", href: "/admin", icon: LayoutDashboard, className: "text-lg font-bold text-primary" },
+  { label: "Usuarios", href: "/admin/usuarios", icon: Users, className: "text-lg font-bold text-primary" },
+  { label: "Saldo", href: "/admin/saldo", icon: Wallet, className: "text-lg font-bold text-primary" },
+  { label: "Cuentas", href: "/admin/cuentas", icon: KeyRound, className: "text-lg font-bold text-primary" },
+  { label: "Precio cuentas", href: "/admin/pantallas", icon: Monitor, className: "text-lg font-bold text-primary" },
+  { label: "Servicios", href: "/admin/estrenos", icon: Film, className: "text-lg font-bold text-primary" },
+  { label: "Estrenos", href: "/admin/releases", icon: Sparkles, className: "text-lg font-bold text-primary" },
+  { label: "Tutoriales", href: "/admin/tutoriales", icon: BookOpen, className: "text-lg font-bold text-primary" },
+  { label: "Promociones", href: "/admin/promociones", icon: Percent, className: "text-lg font-bold text-primary" },
+  { label: "Reportes", href: "/admin/reportes", icon: BarChart2, className: "text-lg font-bold text-primary" },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
