@@ -105,7 +105,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
               </div>
               <div className="flex-1">
                 <SheetTitle className="text-xl text-foreground">{user.name}</SheetTitle>
-                <SheetDescription className="text-muted-foreground">{user.email}</SheetDescription>
+                <SheetDescription className="">{user.email}</SheetDescription>
               </div>
             </div>
           </SheetHeader>
@@ -116,8 +116,8 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Saldo disponible</p>
-                    <div className="text-3xl font-bold text-foreground">
+                    <p className="text-sm mb-1">Saldo disponible</p>
+                    <div className="text-3xl font-bold">
                       $<AnimatedCounter value={user.balance} duration={1000} decimals={0} />
                     </div>
                   </div>
@@ -163,20 +163,20 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                   <div className="grid grid-cols-2 gap-3">
                     <Card className="bg-card border-border">
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                        <div className="flex items-center gap-2 mb-1">
                           <Tv className="w-4 h-4" />
                           <span className="text-xs">Compras Aprobadas</span>
                         </div>
-                        <p className="text-2xl font-bold text-foreground">{comprasAprobadas.length}</p>
+                        <p className="text-2xl font-bold">{comprasAprobadas.length}</p>
                       </CardContent>
                     </Card>
                     <Card className="bg-card border-border">
                       <CardContent className="p-4">
-                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                        <div className="flex items-center gap-2 mb-1">
                           <TrendingUp className="w-4 h-4" />
                           <span className="text-xs">Compras del Mes</span>
                         </div>
-                        <p className="text-2xl font-bold text-foreground">{comprasMes}</p>
+                        <p className="text-2xl font-bold">{comprasMes}</p>
                       </CardContent>
                     </Card>
                   </div>
@@ -190,7 +190,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                         <TransactionItem key={tx.id} transaccion={tx} />
                       ))}
                       {transacciones.length === 0 && (
-                        <p className="text-sm text-muted-foreground text-center py-4">
+                        <p className="text-sm text-center py-4">
                           No hay actividad reciente
                         </p>
                       )}
@@ -215,7 +215,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                       <TransactionItem key={tx.id} transaccion={tx} showDate />
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground text-center py-8">
+                    <p className="text-sm text-center py-8">
                       No hay transacciones
                     </p>
                   )}
@@ -234,7 +234,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                   <Card className="bg-card border-border">
                     <CardContent className="py-8 text-center">
                       <Tv className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-muted-foreground">No tienes compras registradas</p>
+                      <p>No tienes compras registradas</p>
                     </CardContent>
                   </Card>
                 )}
@@ -249,16 +249,16 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label className="text-muted-foreground">Nombre</Label>
-                    <p className="text-foreground">{user.name}</p>
+                    <Label className="">Nombre</Label>
+                    <p>{user.name}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Email</Label>
-                    <p className="text-foreground">{user.email}</p>
+                    <Label className="">Email</Label>
+                    <p>{user.email}</p>
                   </div>
                   <div>
-                    <Label className="text-muted-foreground">Miembro desde</Label>
-                    <p className="text-foreground flex items-center gap-2">
+                    <Label className="">Miembro desde</Label>
+                    <p className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       {new Date(user.created_at).toLocaleDateString("es-ES", {
                         year: "numeric",
@@ -269,7 +269,7 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
                   </div>
                   {user.roles && user.roles.length > 0 && (
                     <div>
-                      <Label className="text-muted-foreground">Roles</Label>
+                      <Label className="">Roles</Label>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {user.roles.map((r) => (
                           <Badge key={r.id} variant="outline" className="text-primary border-primary/30">
@@ -320,9 +320,9 @@ function TransactionItem({ transaccion: tx, showDate = false }: { transaccion: T
           {isIngreso ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
         </div>
         <div>
-          <p className="text-sm font-medium text-foreground line-clamp-1">{tx.descripcion}</p>
+          <p className="text-sm font-medium line-clamp-1">{tx.descripcion}</p>
           {showDate && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs">
               {new Date(tx.created_at).toLocaleDateString("es-ES")}
             </p>
           )}
@@ -561,11 +561,11 @@ function RechargeDialog({
           <div className="space-y-4 py-2">
             {/* 1. Método */}
             <div className="space-y-2">
-              <Label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+              <Label className="text-sm font-bold uppercase tracking-wide">
                 1. Método de pago
               </Label>
               {metodos.length === 0 ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <div className="flex items-center gap-2 text-xs py-2">
                   <Loader2 className="w-3 h-3 animate-spin" /> Cargando métodos...
                 </div>
               ) : (
@@ -579,7 +579,7 @@ function RechargeDialog({
                           isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40')}>
                         <span className="text-lg">{m.emoji}</span>
                         <span className="text-sm font-bold text-foreground">{m.nombre}</span>
-                        {cuenta && <span className="text-sm font-mono text-muted-foreground">{cuenta.numero}</span>}
+                        {cuenta && <span className="text-sm font-mono">{cuenta.numero}</span>}
                       </button>
                     )
                   })}
@@ -591,9 +591,9 @@ function RechargeDialog({
             {selectedMetodo && primaryCuenta && (
               <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 border border-border">
                 <div>
-                  <p className="text-xs text-muted-foreground">{selectedMetodo.emoji} Transfiere a</p>
-                  <p className="font-bold font-mono text-foreground">{primaryCuenta.numero}</p>
-                  {primaryCuenta.descripcion && <p className="text-xs text-muted-foreground">{primaryCuenta.descripcion}</p>}
+                  <p className="text-xs">Transfiere a</p>
+                  <p className="font-bold font-mono">{primaryCuenta.numero}</p>
+                  {primaryCuenta.descripcion && <p className="text-xs">{primaryCuenta.descripcion}</p>}
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCopy(primaryCuenta.numero)}>
                   {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
@@ -608,7 +608,7 @@ function RechargeDialog({
 
             {/* 2. Monto */}
             <div className="space-y-2">
-              <Label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">2. Monto (COP)</Label>
+              <Label className="text-sm font-bold uppercase tracking-wide">2. Monto (COP)</Label>
               <div className="grid grid-cols-4 gap-2">
                 {PRESET_AMOUNTS.map((preset) => (
                   <Button key={preset} variant={selectedPreset === preset ? 'default' : 'outline'} size="sm"
@@ -628,7 +628,7 @@ function RechargeDialog({
 
             {/* 3. Referencia */}
             <div className="space-y-2">
-              <Label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
+              <Label className="text-sm font-bold uppercase tracking-wide">
                 3. Referencia / comprobante <span className="text-destructive">*</span>
               </Label>
               <Input placeholder="Número de transacción o comprobante"
