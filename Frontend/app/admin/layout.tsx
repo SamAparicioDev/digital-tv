@@ -31,16 +31,17 @@ import {
 import { NotificationPanel } from "@/components/notifications/notification-panel"
 
 const navItems = [
-  { label: "Dashboard", href: "/admin", icon: LayoutDashboard, className: "text-lg font-bold text-primary" },
-  { label: "Usuarios", href: "/admin/usuarios", icon: Users, className: "text-lg font-bold text-primary" },
-  { label: "Saldo", href: "/admin/saldo", icon: Wallet, className: "text-lg font-bold text-primary" },
-  { label: "Cuentas", href: "/admin/cuentas", icon: KeyRound, className: "text-lg font-bold text-primary" },
-  { label: "Precio cuentas", href: "/admin/pantallas", icon: Monitor, className: "text-lg font-bold text-primary" },
-  { label: "Servicios", href: "/admin/estrenos", icon: Film, className: "text-lg font-bold text-primary" },
-  { label: "Estrenos", href: "/admin/releases", icon: Sparkles, className: "text-lg font-bold text-primary" },
-  { label: "Tutoriales", href: "/admin/tutoriales", icon: BookOpen, className: "text-lg font-bold text-primary" },
-  { label: "Promociones", href: "/admin/promociones", icon: Percent, className: "text-lg font-bold text-primary" },
-  { label: "Reportes", href: "/admin/reportes", icon: BarChart2, className: "text-lg font-bold text-primary" },
+  { label: "Inicio", href: "/", icon: Home },
+  { label: "Panel", href: "/admin", icon: LayoutDashboard },
+  { label: "Usuarios", href: "/admin/usuarios", icon: Users },
+  { label: "Saldo", href: "/admin/saldo", icon: Wallet },
+  { label: "Cuentas", href: "/admin/cuentas", icon: KeyRound },
+  { label: "Precio cuentas", href: "/admin/pantallas", icon: Monitor },
+  { label: "Servicios", href: "/admin/estrenos", icon: Film },
+  { label: "Estrenos", href: "/admin/releases", icon: Sparkles },
+  { label: "Tutoriales", href: "/admin/tutoriales", icon: BookOpen },
+  { label: "Promociones", href: "/admin/promociones", icon: Percent },
+  { label: "Reportes", href: "/admin/reportes", icon: BarChart2 },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -117,72 +118,36 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 min-h-0 p-3 space-y-1 overflow-y-auto">
-          <Link
-            href="/"
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors duration-200",
-              isSidebarCollapsed && "justify-center px-2"
-            )}
-            title="Ir al inicio"
-          >
-            <Home className="w-5 h-5" />
-            {!isSidebarCollapsed && <span className="font-semibold text-base">Inicio</span>}
-          </Link>
-          <div className="space-y-1">
-            <Link
-              href="/admin/panel"
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors duration-200",
-                isSidebarCollapsed && "justify-center px-2"
-              )}
-              title="Panel"
-            >
-              <Grid className="w-5 h-5" />
-              {!isSidebarCollapsed && <span className="font-semibold text-base">Panel</span>}
-            </Link>
-            {!isSidebarCollapsed && (
-              <div className="pl-8 space-y-1">
-                <Link
-                  href="/admin/mis-cuentas"
-                  className="block text-sm text-sidebar-foreground hover:text-sidebar-accent-foreground"
-                >
-                  Mis Cuentas
-                </Link>
-                <Link
-                  href="/admin/saldo"
-                  className="block text-sm text-sidebar-foreground hover:text-sidebar-accent-foreground"
-                >
-                  Saldo
-                </Link>
-                <Link
-                  href="/admin/historial"
-                  className="block text-sm text-sidebar-foreground hover:text-sidebar-accent-foreground"
-                >
-                  Historial
-                </Link>
-                <Link
-                  href="/admin/configuracion"
-                  className="block text-sm text-sidebar-foreground hover:text-sidebar-accent-foreground"
-                >
-                  Configuración
-                </Link>
-              </div>
-            )}
-          </div>
+          {navItems.map((item) => {
+            const isActive = pathname === item.href
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsSidebarOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+                  isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isSidebarCollapsed && "justify-center px-2"
+                )}
+                title={isSidebarCollapsed ? item.label : undefined}
+              >
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {!isSidebarCollapsed && (
+                  <>
+                    <span className="font-semibold text-base">{item.label}</span>
+                    {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-primary-foreground" />}
+                  </>
+                )}
+              </Link>
+            )
+          })}
         </nav>
 
         {/* User + Settings */}
         <div className="p-3 pb-safe border-t border-sidebar-border space-y-1" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}>
-          <Link
-            href="/admin/configuracion"
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent transition-colors duration-200",
-              isSidebarCollapsed && "justify-center px-2"
-            )}
-          >
-            <Settings className="w-5 h-5" />
-            {!isSidebarCollapsed && <span className="font-semibold text-base">Configuración</span>}
-          </Link>
 
           {!isSidebarCollapsed && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sidebar-accent/40 mt-2">
