@@ -391,7 +391,7 @@ function CompraCard({ compra }: { compra: Compra }) {
 
 // ─── RechargeDialog ───────────────────────────────────────────────────────────
 
-const PRESET_AMOUNTS = [10000, 25000, 50000, 100000]
+const PRESET_AMOUNTS = [15000, 25000, 50000, 100000]
 
 function RechargeDialog({
   isOpen,
