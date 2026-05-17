@@ -1,12 +1,12 @@
 import React from "react"
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Montserrat } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AuthProvider } from '@/contexts/auth-context'
 import { LogoutOverlay } from '@/components/ui/logout-overlay'
 import './globals.css'
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const montserrat = Montserrat({ subsets: ["latin"], weight: ["400", "600", "700"], variable: "--font-montserrat" });
 
 export const metadata: Metadata = {
   title: 'DigitalTv - Tu Plataforma de Streaming Premium',
@@ -45,7 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="dark">
-      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+      <body className={`${montserrat.variable} font-sans antialiased bg-background text-foreground`}>
         <AuthProvider>
           <LogoutOverlay />
           {children}

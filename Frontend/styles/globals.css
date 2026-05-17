@@ -75,7 +75,7 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
+  --font-sans: var(--font-montserrat), 'Montserrat', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -121,22 +121,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 1.125rem; /* Aumentar el tamaño de la fuente */
-    font-weight: 700; /* Aplicar bold para mayor visibilidad */
+    font-size: 1.0625rem;
+    font-weight: 600;
   }
-}
-
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
-
-:root {
-  font-family: 'Montserrat', sans-serif !important;
-  font-size: 18px !important; /* Aumentar el tamaño de fuente */
-  font-weight: 700 !important; /* Aplicar bold */
-}
-
-body {
-  font-family: var(--font-family) !important;
-  font-size: var(--font-size) !important;
-  font-weight: var(--font-weight) !important;
 }
