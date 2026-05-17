@@ -136,19 +136,19 @@ export function ProfilePanel({ isOpen, onClose }: ProfilePanelProps) {
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
             <TabsList className="grid w-full grid-cols-4 bg-secondary">
-              <TabsTrigger value="resumen" className="text-xs">
+              <TabsTrigger value="resumen" className="text-sm font-semibold">
                 <User className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">Resumen</span>
               </TabsTrigger>
-              <TabsTrigger value="historial" className="text-xs">
+              <TabsTrigger value="historial" className="text-sm font-semibold">
                 <History className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">Historial</span>
               </TabsTrigger>
-              <TabsTrigger value="compras" className="text-xs">
+              <TabsTrigger value="compras" className="text-sm font-semibold">
                 <Tv className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">Compras</span>
               </TabsTrigger>
-              <TabsTrigger value="config" className="text-xs">
+              <TabsTrigger value="config" className="text-sm font-semibold">
                 <Settings className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">Config</span>
               </TabsTrigger>
@@ -561,7 +561,7 @@ function RechargeDialog({
           <div className="space-y-4 py-2">
             {/* 1. Método */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
                 1. Método de pago
               </Label>
               {metodos.length === 0 ? (
@@ -578,8 +578,8 @@ function RechargeDialog({
                         className={cn('flex flex-col items-center gap-1 p-3 rounded-lg border-2 text-center transition-all duration-150',
                           isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40')}>
                         <span className="text-lg">{m.emoji}</span>
-                        <span className="text-xs font-semibold text-foreground">{m.nombre}</span>
-                        {cuenta && <span className="text-xs font-mono text-muted-foreground">{cuenta.numero}</span>}
+                        <span className="text-sm font-bold text-foreground">{m.nombre}</span>
+                        {cuenta && <span className="text-sm font-mono text-muted-foreground">{cuenta.numero}</span>}
                       </button>
                     )
                   })}
@@ -608,12 +608,12 @@ function RechargeDialog({
 
             {/* 2. Monto */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">2. Monto (COP)</Label>
+              <Label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">2. Monto (COP)</Label>
               <div className="grid grid-cols-4 gap-2">
                 {PRESET_AMOUNTS.map((preset) => (
                   <Button key={preset} variant={selectedPreset === preset ? 'default' : 'outline'} size="sm"
                     onClick={() => { setSelectedPreset(preset); setAmount('') }}
-                    className={cn('text-xs', selectedPreset === preset && 'bg-primary text-primary-foreground')}>
+                    className={cn('text-sm font-bold', selectedPreset === preset && 'bg-primary text-primary-foreground')}>
                     ${preset / 1000}k
                   </Button>
                 ))}
@@ -628,7 +628,7 @@ function RechargeDialog({
 
             {/* 3. Referencia */}
             <div className="space-y-2">
-              <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Label className="text-sm font-bold uppercase tracking-wide text-muted-foreground">
                 3. Referencia / comprobante <span className="text-destructive">*</span>
               </Label>
               <Input placeholder="Número de transacción o comprobante"

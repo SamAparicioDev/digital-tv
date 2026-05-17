@@ -77,6 +77,12 @@
 @theme inline {
   --font-sans: var(--font-montserrat), 'Montserrat', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
+  /* Escalar todos los tamaños de texto hacia arriba para mejor legibilidad */
+  --text-xs: 0.8125rem;   /* era 0.75rem */
+  --text-sm: 1rem;        /* era 0.875rem */
+  --text-base: 1.0625rem; /* era 1rem */
+  --text-lg: 1.1875rem;   /* era 1.125rem */
+  --text-xl: 1.3125rem;   /* era 1.25rem */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

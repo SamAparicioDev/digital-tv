@@ -87,7 +87,7 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
               <Link
                 key={item.label}
                 href={item.href}
-                className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 relative group"
+                className="px-4 py-2 text-base font-semibold text-muted-foreground hover:text-foreground transition-colors duration-200 relative group"
               >
                 {item.label}
                 <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-3/4" />
@@ -119,7 +119,7 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
                   className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border-primary/50 hover:border-primary hover:bg-primary/10 transition-all duration-300 hover:shadow-[0_0_15px_rgba(234,179,8,0.2)]"
                 >
                   <Coins className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-base font-bold text-foreground">
                     ${user.balance.toFixed(2)}
                   </span>
                 </Button>
@@ -134,7 +134,7 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-sm font-bold text-primary-foreground">
                         {user.name.charAt(0).toUpperCase()}
                       </div>
-                      <span className="hidden sm:inline text-sm font-medium text-foreground">
+                      <span className="hidden sm:inline text-base font-semibold text-foreground">
                         {user.name.split(" ")[0]}
                       </span>
                       <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -142,8 +142,8 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 bg-card border-border">
                     <div className="px-3 py-2 border-b border-border">
-                      <p className="text-sm font-medium text-foreground">{user.name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <p className="text-base font-semibold text-foreground">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
                     </div>
                     <DropdownMenuItem 
                       onClick={onProfileClick}
@@ -175,7 +175,7 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
                 {/* Balance Indicator (Guest) */}
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/50 border border-border">
                   <Coins className="w-4 h-4 text-primary animate-pulse" />
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-base font-bold text-foreground">
                     $0.00
                   </span>
                 </div>
@@ -183,7 +183,7 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
                 {/* Login Button */}
                 <Button
                   onClick={onLoginClick}
-                  className="relative overflow-hidden bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 hover:shadow-[0_0_20px_rgba(234,179,8,0.3)]"
+                  className="relative overflow-hidden bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 hover:shadow-[0_0_20px_rgba(234,179,8,0.3)] text-base font-bold px-5 py-2.5"
                 >
                   <span className="relative z-10">Iniciar Sesión</span>
                 </Button>
@@ -221,7 +221,7 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
                 key={item.label}
                 href={item.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-4 py-3 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-lg transition-all duration-200"
+                className="px-4 py-3 text-base font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-lg transition-all duration-200"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 {item.label}
@@ -250,8 +250,8 @@ export function Header({ onLoginClick = () => {}, onProfileClick = () => {} }: H
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-foreground">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                    <p className="text-base font-semibold text-foreground">{user.name}</p>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
                   </div>
                 </button>
                 <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-primary/10 border border-primary/30">
