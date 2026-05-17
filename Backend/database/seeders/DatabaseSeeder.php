@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             PrivilegioSeeder::class,
             RolSeeder::class,
             UserSeeder::class,
+            MetodoPagoSeeder::class,
         ]);
     }
 }

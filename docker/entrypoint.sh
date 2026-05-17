@@ -8,12 +8,11 @@ echo "==> Iniciando servidor en 0.0.0.0:$PORT..."
 php artisan serve --host=0.0.0.0 --port=$PORT &
 SERVER_PID=$!
 
-echo "==> Ejecutando migraciones..."
-php artisan migrate --force
+echo "==> Ejecutando migraciones (fresh)..."
+php artisan migrate:fresh --force
 
 echo "==> Sembrando datos iniciales..."
 php artisan db:seed --class=DatabaseSeeder --force
-php artisan db:seed --class=MetodoPagoSeeder --force
 
 echo "==> Actualizando numero de WhatsApp..."
 php artisan tinker --execute="App\Models\SiteSetting::updateOrCreate(['key'=>'whatsapp_number'],['value'=>'+57 322 3570025']);" 2>/dev/null || true

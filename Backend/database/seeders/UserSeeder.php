@@ -19,7 +19,7 @@ class UserSeeder extends Seeder
             $admin = User::create([
                 'name' => 'Super Admin',
                 'email' => $adminEmail,
-                'password' => 'password123',
+                'password' => Hash::make('password123'),
             ]);
 
             Wallet::create([
