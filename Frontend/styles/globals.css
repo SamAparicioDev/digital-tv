@@ -130,13 +130,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
 
 :root {
-  font-family: 'Montserrat', sans-serif;
-  font-size: 18px; /* Aumentar el tamaño de fuente */
-  font-weight: 700; /* Aplicar bold */
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 18px !important; /* Aumentar el tamaño de fuente */
+  font-weight: 700 !important; /* Aplicar bold */
 }
 
 body {
-  font-family: var(--font-family);
-  font-size: var(--font-size);
-  font-weight: var(--font-weight);
+  font-family: var(--font-family) !important;
+  font-size: var(--font-size) !important;
+  font-weight: var(--font-weight) !important;
 }
