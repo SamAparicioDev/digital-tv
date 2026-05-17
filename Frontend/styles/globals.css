@@ -126,3 +126,17 @@
     font-weight: 700; /* Aplicar bold para mayor visibilidad */
   }
 }
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+:root {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px; /* Aumentar el tamaño de fuente */
+  font-weight: 700; /* Aplicar bold */
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  font-weight: var(--font-weight);
+}
