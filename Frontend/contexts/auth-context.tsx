@@ -20,7 +20,7 @@ interface AuthContextType {
   activeRole: Role | null
   isAdmin: boolean
   login: (email: string, password: string) => Promise<User>
-  register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<User>
+  register: (name: string, email: string, password: string, passwordConfirmation: string, phone?: string) => Promise<User>
   logout: () => Promise<void>
   refreshUser: () => Promise<void>
   updateBalance: (newBalance: number) => void
@@ -82,9 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     email: string,
     password: string,
-    passwordConfirmation: string
+    passwordConfirmation: string,
+    phone?: string
   ): Promise<User> => {
-    const { user: userData } = await api.register(name, email, password, passwordConfirmation)
+    const { user: userData } = await api.register(name, email, password, passwordConfirmation, phone)
     setUser(userData)
     // El registro siempre asigna rol Cliente → auto-seleccionar
     const clienteRole = userData.roles?.[0]

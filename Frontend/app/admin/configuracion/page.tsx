@@ -11,8 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Settings, Bell, Shield, Palette, MessageSquare, CreditCard, Save, Loader2, Check, AlertCircle, Phone, MapPin,
+  User, Mail, Lock, Smartphone,
 } from "lucide-react"
 import { api, type SiteSettings } from "@/lib/api"
+import { useAuth } from "@/contexts/auth-context"
 
 const DEFAULTS: SiteSettings = {
   site_name: "DigitalTv",
@@ -40,6 +42,50 @@ export default function AdminConfigPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [savedOk, setSavedOk] = useState(false)
+
+  // ── Perfil personal ───────────────────────────────────────────────────────
+  const { user, refreshUser } = useAuth()
+  const [profile, setProfile] = useState({ name: "", email: "", phone: "" })
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [profileOk, setProfileOk] = useState(false)
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  useEffect(() => {
+    if (user) setProfile({ name: user.name ?? "", email: user.email ?? "", phone: user.phone ?? "" })
+  }, [user])
+
+  const handleSaveProfile = async () => {
+    setProfileError(null); setProfileOk(false); setSavingProfile(true)
+    try {
+      await api.updateProfile({ name: profile.name.trim(), email: profile.email.trim(), phone: profile.phone.trim() || null })
+      await refreshUser()
+      setProfileOk(true)
+      setTimeout(() => setProfileOk(false), 2500)
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Error al guardar")
+    } finally { setSavingProfile(false) }
+  }
+
+  // ── Contraseña personal ───────────────────────────────────────────────────
+  const [pwd, setPwd] = useState({ current: "", new: "", confirm: "" })
+  const [pwdError, setPwdError] = useState<string | null>(null)
+  const [pwdOk, setPwdOk] = useState(false)
+  const [savingPwd, setSavingPwd] = useState(false)
+
+  const handleChangePassword = async () => {
+    setPwdError(null); setPwdOk(false)
+    if (!pwd.current || !pwd.new) { setPwdError("Completa ambos campos"); return }
+    if (pwd.new.length < 8) { setPwdError("Mínimo 8 caracteres"); return }
+    if (pwd.new !== pwd.confirm) { setPwdError("Las contraseñas no coinciden"); return }
+    setSavingPwd(true)
+    try {
+      await api.changePassword({ current_password: pwd.current, new_password: pwd.new, new_password_confirmation: pwd.confirm })
+      setPwdOk(true); setPwd({ current: "", new: "", confirm: "" })
+      setTimeout(() => setPwdOk(false), 2500)
+    } catch (err) {
+      setPwdError(err instanceof Error ? err.message : "Error al cambiar contraseña")
+    } finally { setSavingPwd(false) }
+  }
 
   useEffect(() => {
     api.getSettings()
@@ -101,6 +147,7 @@ export default function AdminConfigPage() {
           <TabsTrigger value="notifications" className="gap-2"><Bell className="w-4 h-4" />Notificaciones</TabsTrigger>
           <TabsTrigger value="security" className="gap-2"><Shield className="w-4 h-4" />Seguridad</TabsTrigger>
           <TabsTrigger value="payments" className="gap-2"><CreditCard className="w-4 h-4" />Pagos</TabsTrigger>
+          <TabsTrigger value="perfil" className="gap-2"><User className="w-4 h-4" />Mi Perfil</TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
@@ -270,6 +317,79 @@ export default function AdminConfigPage() {
               </CardContent>
             </Card>
           </motion.div>
+        </TabsContent>
+
+        {/* ── Mi Perfil ──────────────────────────────────────────────────── */}
+        <TabsContent value="perfil" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><User className="w-5 h-5 text-primary" />Información personal</CardTitle>
+                <CardDescription>Actualiza tu nombre, email y teléfono</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pName">Nombre completo</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
+                    <Input id="pName" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} className="pl-10 bg-secondary border-border" placeholder="Tu nombre" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pEmail">Correo electrónico</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
+                    <Input id="pEmail" type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} className="pl-10 bg-secondary border-border" placeholder="tu@email.com" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pPhone">Teléfono (opcional)</Label>
+                  <div className="relative">
+                    <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
+                    <Input id="pPhone" type="tel" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} className="pl-10 bg-secondary border-border" placeholder="+57 300 123 4567" />
+                  </div>
+                </div>
+                {profileError && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-red-500" /><p className="text-sm text-red-500">{profileError}</p></div>}
+                <Button onClick={handleSaveProfile} disabled={savingProfile} className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+                  {savingProfile ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</> : profileOk ? <><Check className="w-4 h-4 mr-2" />¡Guardado!</> : <><Save className="w-4 h-4 mr-2" />Guardar cambios</>}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Shield className="w-5 h-5 text-primary" />Cambiar contraseña</CardTitle>
+                <CardDescription>Verifica tu contraseña actual antes de cambiarla</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pCurrent">Contraseña actual</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
+                    <Input id="pCurrent" type="password" value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} className="pl-10 bg-secondary border-border" placeholder="••••••••" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pNew">Nueva contraseña</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
+                    <Input id="pNew" type="password" value={pwd.new} onChange={(e) => setPwd({ ...pwd, new: e.target.value })} className="pl-10 bg-secondary border-border" placeholder="Mínimo 8 caracteres" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pConfirm">Confirmar nueva contraseña</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" />
+                    <Input id="pConfirm" type="password" value={pwd.confirm} onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })} className="pl-10 bg-secondary border-border" placeholder="••••••••" />
+                  </div>
+                </div>
+                {pwdError && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-red-500" /><p className="text-sm text-red-500">{pwdError}</p></div>}
+                <Button onClick={handleChangePassword} disabled={savingPwd} variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground bg-transparent">
+                  {savingPwd ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Cambiando...</> : pwdOk ? <><Check className="w-4 h-4 mr-2" />¡Contraseña actualizada!</> : <><Lock className="w-4 h-4 mr-2" />Cambiar contraseña</>}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
