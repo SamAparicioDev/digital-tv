@@ -15,9 +15,9 @@ export function WhatsAppButton() {
     api.getSettings()
       .then(s => {
         const num = (s.whatsapp_number ?? "").replace(/[^\d]/g, "")
-        setWhatsappNumber(num || "3223570025")
+        setWhatsappNumber(num || "573223570025")
       })
-      .catch(() => setWhatsappNumber("3223570025"))
+      .catch(() => setWhatsappNumber("573223570025"))
 
     const showTimer = setTimeout(() => setIsVisible(true), 1500)
     const pulseInterval = setInterval(() => {

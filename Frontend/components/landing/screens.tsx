@@ -161,7 +161,7 @@ export function Screens({ onBuyClick }: ScreensProps) {
                           {[
                             oferta.cuenta_completa
                               ? 'Acceso total: email + contraseña propios'
-                              : 'Cuenta compartida — 1 dispositivo conectado',
+                              : '1 perfil personal incluido',
                             `${dias} días de vigencia`,
                             oferta.garantia_dias > 0 ? `${oferta.garantia_dias} días de garantía` : null,
                             oferta.cuenta_completa

@@ -444,7 +444,7 @@ export default function StorePage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     {selectedOferta.cuenta_completa
                       ? 'Recibirás email + contraseña. Puedes usar todos los perfiles internos.'
-                      : 'Cuenta compartida — solo 1 dispositivo conectado. No cambiar nombres, contraseña, PIN ni eliminar perfiles. Incumplir estas reglas: suspensión de 3 días.'}
+                      : 'Recibirás 1 perfil personal con su PIN. No cambiar nombres, contraseña ni eliminar perfiles. Incumplir estas reglas: suspensión de 3 días.'}
                   </p>
                 </div>
 
