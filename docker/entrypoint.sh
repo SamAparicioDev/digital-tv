@@ -8,8 +8,8 @@ echo "==> Iniciando servidor en 0.0.0.0:$PORT..."
 php artisan serve --host=0.0.0.0 --port=$PORT &
 SERVER_PID=$!
 
-echo "==> Ejecutando migraciones (fresh)..."
-php artisan migrate:fresh --force
+echo "==> Ejecutando migraciones..."
+php artisan migrate --force
 
 echo "==> Sembrando datos iniciales..."
 php artisan db:seed --class=DatabaseSeeder --force
