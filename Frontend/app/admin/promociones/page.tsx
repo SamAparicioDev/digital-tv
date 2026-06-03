@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { FadeIn } from "@/components/animations/motion"
 import {
-  Percent, RefreshCw, Loader2, AlertCircle, Search, Calendar, Check, X, Trash2, Plus, Pencil,
+  Percent, RefreshCw, Loader2, AlertCircle, Search, Calendar, Check, X, Trash2, Plus, Pencil, ImageIcon, Upload,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api, type Descuento, type Role, type StreamingService } from "@/lib/api"
@@ -23,8 +23,7 @@ interface RolRow { role_id: string; valor_descuento: string; tipo_descuento: 'po
 
 interface DescuentoForm {
   nombre: string
-  codigo: string
-  descripcion: string
+  imagen_url: string
   fecha_inicio: string
   fecha_fin: string
   es_recurrente: boolean
@@ -39,7 +38,7 @@ interface DescuentoForm {
 }
 
 const emptyForm: DescuentoForm = {
-  nombre: '', codigo: '', descripcion: '',
+  nombre: '', imagen_url: '',
   fecha_inicio: new Date().toISOString().split('T')[0], fecha_fin: '',
   es_recurrente: false, is_active: true,
   valor_global: '', tipo_global: 'porcentaje',
@@ -61,6 +60,7 @@ export default function AdminPromocionesPage() {
   const [form, setForm] = useState<DescuentoForm>(emptyForm)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
 
   const load = async () => {
     setIsLoading(true); setError(null)
@@ -83,7 +83,7 @@ export default function AdminPromocionesPage() {
   const openEdit = (d: Descuento) => {
     setEditingDesc(d)
     setForm({
-      nombre: d.nombre, codigo: d.codigo ?? '', descripcion: d.descripcion ?? '',
+      nombre: d.nombre, imagen_url: d.imagen_url ?? '',
       fecha_inicio: d.fecha_inicio.split('T')[0],
       fecha_fin: d.fecha_fin?.split('T')[0] ?? '',
       es_recurrente: d.es_recurrente, is_active: d.is_active,
@@ -126,14 +126,13 @@ export default function AdminPromocionesPage() {
     try {
       const payload: any = {
         nombre: form.nombre,
-        descripcion: form.descripcion || undefined,
+        imagen_url: form.imagen_url || undefined,
         fecha_inicio: form.fecha_inicio,
         fecha_fin: form.fecha_fin || undefined,
         es_recurrente: form.es_recurrente,
         is_active: form.is_active,
         streaming_service_ids: form.streaming_service_ids.map(id => parseInt(id)),
       }
-      if (form.codigo) payload.codigo = form.codigo
 
       if (!hasRoles) {
         // Descuento global
@@ -179,8 +178,7 @@ export default function AdminPromocionesPage() {
   }
 
   const filtered = descuentos.filter(d =>
-    d.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.codigo ?? '').toLowerCase().includes(searchQuery.toLowerCase())
+    d.nombre.toLowerCase().includes(searchQuery.toLowerCase())
   )
   const activos = descuentos.filter(d => d.is_active).length
 
@@ -231,7 +229,7 @@ export default function AdminPromocionesPage() {
           <CardContent className="p-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar por nombre o código..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+                    <Input placeholder="Buscar por nombre..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
           </CardContent>
         </Card>
@@ -260,7 +258,6 @@ export default function AdminPromocionesPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
                             <h3 className="font-semibold text-foreground">{d.nombre}</h3>
-                            {d.codigo && <Badge variant="outline" className="text-xs font-mono">{d.codigo}</Badge>}
                             <Badge variant="outline" className={cn("text-xs", d.is_active && vigente ? "text-green-500 border-green-500/30" : "text-muted-foreground")}>
                               {d.is_active ? (vigente ? 'Activo' : 'Vencido') : 'Inactivo'}
                             </Badge>
@@ -273,8 +270,6 @@ export default function AdminPromocionesPage() {
                               {d.valor_global}{d.tipo_global === 'porcentaje' ? '%' : ' COP'} — aplica a todos
                             </p>
                           )}
-
-                          {d.descripcion && <p className="text-sm text-muted-foreground truncate">{d.descripcion}</p>}
 
                           <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{new Date(d.fecha_inicio).toLocaleDateString('es-CO')}</span>
@@ -327,10 +322,59 @@ export default function AdminPromocionesPage() {
             {/* Info básica */}
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1"><Label>Nombre *</Label><Input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} placeholder="Descuento Mayorista" /></div>
-              <div className="space-y-1"><Label>Código (opcional)</Label><Input value={form.codigo} onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))} placeholder="DESC20" /></div>
-              <div className="space-y-1"><Label>Descripción (opcional)</Label><Input value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} placeholder="Descripción..." /></div>
               <div className="space-y-1"><Label>Fecha inicio *</Label><Input type="date" value={form.fecha_inicio} onChange={e => setForm(f => ({ ...f, fecha_inicio: e.target.value }))} /></div>
               <div className="space-y-1"><Label>Fecha fin (opcional)</Label><Input type="date" value={form.fecha_fin} onChange={e => setForm(f => ({ ...f, fecha_fin: e.target.value }))} /></div>
+            </div>
+
+            {/* Imagen de la promoción */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1"><ImageIcon className="w-4 h-4" />Imagen de la promoción (JPG, PNG, WEBP — máx. 4MB)</Label>
+              <div className="flex gap-3 items-start">
+                {form.imagen_url && (
+                  <div className="relative w-24 h-16 rounded-lg overflow-hidden border border-border flex-shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.imagen_url} alt="Vista previa" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, imagen_url: '' }))}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                <label className={cn(
+                  "flex-1 flex flex-col items-center gap-2 p-4 rounded-lg border-2 border-dashed cursor-pointer transition-colors",
+                  isUploadingImage ? "border-primary/50 bg-primary/5 pointer-events-none" : "border-border hover:border-primary/50 hover:bg-primary/5"
+                )}>
+                  {isUploadingImage ? (
+                    <><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="text-xs text-muted-foreground">Subiendo imagen...</span></>
+                  ) : (
+                    <><Upload className="w-6 h-6 text-muted-foreground" /><span className="text-xs text-muted-foreground">{form.imagen_url ? 'Cambiar imagen' : 'Subir imagen'}</span></>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    className="hidden"
+                    disabled={isUploadingImage}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      if (file.size > 4 * 1024 * 1024) { setSaveError('La imagen no debe superar 4MB'); return }
+                      setIsUploadingImage(true); setSaveError(null)
+                      try {
+                        const url = await api.uploadImagen(file, 'promociones')
+                        setForm(f => ({ ...f, imagen_url: url }))
+                      } catch (err) {
+                        setSaveError(err instanceof Error ? err.message : 'Error al subir la imagen')
+                      } finally {
+                        setIsUploadingImage(false)
+                        e.target.value = ''
+                      }
+                    }}
+                  />
+                </label>
+              </div>
             </div>
             <div className="flex gap-6">
               <div className="flex items-center gap-2"><Switch checked={form.es_recurrente} onCheckedChange={v => setForm(f => ({ ...f, es_recurrente: v }))} /><Label>Recurrente</Label></div>

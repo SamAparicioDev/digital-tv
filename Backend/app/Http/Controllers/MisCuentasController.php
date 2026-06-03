@@ -41,7 +41,7 @@ class MisCuentasController extends Controller
                 'servicio_color' => $servicio?->primary_color ?? '#6B7280',
                 'servicio_logo'  => $servicio?->logo_url,
                 'email'          => $c->cuenta?->email,
-                'password'       => $esCuentaCompleta ? $c->cuenta?->password : null,
+                'password'       => $c->cuenta?->password,
                 'perfil'         => $c->perfil ? ['nombre' => $c->perfil->nombre, 'pin' => $c->perfil->pin] : null,
                 'vigencia_desde' => $c->vigencia_desde,
                 'vigencia_hasta' => $c->vigencia_hasta,

@@ -617,7 +617,7 @@ function PurchaseSuccessModal({ compra, onClose }: { compra: Compra | null; onCl
                     <CopyBtn text={creds.email} />
                   </div>
                 </div>
-                {creds.tipo === 'cuenta_completa' && creds.password && (
+                {creds.password && (
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Contraseña</span>
                     <div className="flex items-center font-mono text-foreground">

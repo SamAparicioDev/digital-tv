@@ -179,9 +179,8 @@ export interface DescuentoRole {
 
 export interface Descuento {
   id: number
-  codigo: string | null
+  imagen_url: string | null
   nombre: string
-  descripcion: string | null
   fecha_inicio: string
   fecha_fin: string | null
   es_recurrente: boolean

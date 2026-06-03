@@ -13,7 +13,7 @@ class Descuento extends Model
     protected $table = 'descuentos';
 
     protected $fillable = [
-        'codigo', 'nombre', 'descripcion',
+        'nombre', 'imagen_url',
         'fecha_inicio', 'fecha_fin',
         'es_recurrente', 'is_active',
         'streaming_service_id',

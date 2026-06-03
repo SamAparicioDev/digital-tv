@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FadeIn } from "@/components/animations/motion"
-import { ChevronLeft, ChevronRight, Percent, Calendar, Loader2, Tag } from "lucide-react"
+import { ChevronLeft, ChevronRight, Percent, Calendar, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { api, type Descuento } from "@/lib/api"
 
@@ -96,12 +96,24 @@ export function Promotions({ onBuyClick }: PromotionsProps) {
               return (
                 <FadeIn key={promo.id} delay={index * 0.1} direction="up" className="snap-start flex">
                   <Card className={cn(
-                    "relative flex-shrink-0 w-[280px] md:w-[300px] min-h-[500px] flex flex-col overflow-hidden bg-card border-border",
+                    "relative flex-shrink-0 w-[280px] md:w-[300px] flex flex-col overflow-hidden bg-card border-border",
                     "transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-primary/50 group"
                   )}>
-                    {/* Header — altura fija */}
-                    <div className={cn("h-28 flex-shrink-0 bg-gradient-to-br relative", color)}>
-                      <div className="absolute inset-0 bg-black/20" />
+                    {/* Imagen principal — ocupa ~50% de la altura de la tarjeta */}
+                    <div className="relative h-[170px] flex-shrink-0 overflow-hidden rounded-t-lg">
+                      {promo.imagen_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={promo.imagen_url}
+                          alt={promo.nombre}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className={cn("w-full h-full bg-gradient-to-br", color)}>
+                          <div className="absolute inset-0 bg-black/20" />
+                        </div>
+                      )}
+                      {/* Badges sobre la imagen */}
                       {promo.fecha_fin && (
                         <div className="absolute top-3 left-3">
                           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-background/80 text-foreground text-xs font-medium">
@@ -121,25 +133,10 @@ export function Promotions({ onBuyClick }: PromotionsProps) {
 
                     {/* Content — flex column, button siempre al fondo */}
                     <div className="p-5 flex flex-col flex-1">
-                      {/* Título — altura fija para 2 líneas */}
-                      <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors duration-300 line-clamp-2 min-h-[3.5rem]">
+                      {/* Título */}
+                      <h3 className="text-lg font-bold text-foreground mb-3 group-hover:text-primary transition-colors duration-300 line-clamp-2">
                         {promo.nombre}
                       </h3>
-
-                      {/* Código — altura fija */}
-                      <div className="h-6 flex items-center mb-2">
-                        {promo.codigo ? (
-                          <div className="flex items-center gap-1">
-                            <Tag className="w-3 h-3 text-muted-foreground" />
-                            <Badge variant="outline" className="font-mono text-xs">{promo.codigo}</Badge>
-                          </div>
-                        ) : <span className="text-xs text-muted-foreground/40">Sin código</span>}
-                      </div>
-
-                      {/* Descripción — altura fija para 2 líneas */}
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2 min-h-[2.5rem]">
-                        {promo.descripcion || 'Aprovecha esta promoción exclusiva.'}
-                      </p>
 
                       {/* Aplica a — sin overflow para que se vean los badges */}
                       <div className="space-y-1.5 mb-4 flex-1">
@@ -174,6 +171,13 @@ export function Promotions({ onBuyClick }: PromotionsProps) {
                       >
                         Aprovechar oferta
                       </Button>
+
+                      {/* Fecha límite al pie */}
+                      {promo.fecha_fin && (
+                        <p className="text-[10px] text-muted-foreground text-center mt-2">
+                          Válido hasta {new Date(promo.fecha_fin).toLocaleDateString('es-CO')}
+                        </p>
+                      )}
                     </div>
                   </Card>
                 </FadeIn>

@@ -298,6 +298,7 @@ class CompraController extends Controller
                 $compra->update(['datos_acceso' => json_encode([
                     'tipo'           => 'perfil',
                     'email'          => $perfil->cuenta->email,
+                    'password'       => $perfil->cuenta->password,
                     'perfil_nombre'  => $perfil->nombre,
                     'perfil_pin'     => $perfil->pin,
                     'vigencia_hasta' => $vigenciaHasta,

@@ -30,8 +30,7 @@ class DescuentoController extends Controller
     {
         $request->validate([
             'nombre'        => 'required|string|max:255',
-            'codigo'        => 'nullable|string|max:255|unique:descuentos',
-            'descripcion'   => 'nullable|string',
+            'imagen_url'    => 'nullable|string|max:2048',
             'fecha_inicio'  => 'required|date',
             'fecha_fin'     => 'nullable|date|after_or_equal:fecha_inicio',
             'es_recurrente' => 'boolean',
@@ -84,8 +83,7 @@ class DescuentoController extends Controller
     {
         $request->validate([
             'nombre'        => 'sometimes|required|string|max:255',
-            'codigo'        => ['nullable', 'string', 'max:255', Rule::unique('descuentos')->ignore($descuento->id)],
-            'descripcion'   => 'nullable|string',
+            'imagen_url'    => 'nullable|string|max:2048',
             'fecha_inicio'  => 'sometimes|required|date',
             'fecha_fin'     => 'nullable|date|after_or_equal:fecha_inicio',
             'es_recurrente' => 'boolean',
